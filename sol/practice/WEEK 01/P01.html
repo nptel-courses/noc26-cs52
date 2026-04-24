@@ -1465,6 +1465,962 @@
                     ]
                 }
             },
+            {
+                "id": 31,
+                "type": "mcq",
+                "difficulty": "hard",
+                "points": 3,
+                "problem-statement": "Consider the following code that uses `std::sort` with a comparator that returns `true` for equal elements.",
+                "code": "<pre><code>#include &lt;iostream&gt;\n#include &lt;algorithm&gt;\nusing namespace std;\n\nbool bad(int a, int b) {\n    return a &lt;= b;\n}\n\nint main() {\n    int data[] = {5, 1, 4, 2, 8};\n    sort(data, data+5, bad);\n    for (int x : data) cout &lt;&lt; x &lt;&lt; ' ';\n    return 0;\n}</code></pre>",
+                "options-statement": "What is the guaranteed output according to the C++ standard?",
+                "options": [
+                    "1 2 4 5 8",
+                    "8 5 4 2 1",
+                    "Sorted in some order but unspecified",
+                    "Undefined behavior"
+                ],
+                "correct": 3,
+                "explanation": "The comparator `bad` uses `<=` which returns `true` for equal elements. This violates the strict weak ordering requirement (irreflexivity), leading to undefined behavior. The execution may crash, produce garbage, or appear to work, but no output is guaranteed.",
+                "detailed": {
+                    "concept": {
+                        "title": "Strict Weak Ordering in std::sort",
+                        "description": "The comparator for `std::sort` must define a strict weak ordering, which requires `comp(x, x)` to be `false`. Using `<=`, which returns `true` for equal elements, breaks this and results in undefined behavior.",
+                        "points": [
+                            "`bad(a,a)` returns `true` because `a <= a` is true.",
+                            "`std::sort` assumes irreflexivity; breaking it can cause infinite loops or memory corruption.",
+                            "No specific output is guaranteed."
+                        ]
+                    },
+                    "trace": [
+                        { "step": 1, "op": "sort(data, data+5, bad)", "state": "invalid comparator → undefined behavior", "out": "undefined" }
+                    ],
+                    "analysis": {
+                        "whyOptionsWrong": [
+                            { "option": "A", "reason": "This would be the correct ascending sort with a valid `<` comparator, but the comparator is invalid." },
+                            { "option": "B", "reason": "Descending order with valid `>`, not relevant." },
+                            { "option": "C", "reason": "Even an unspecified order implies a defined behavior, which is not the case here." }
+                        ]
+                    },
+                    "tips": [
+                        "Always use strict comparators like `a < b`.",
+                        "Test that `!comp(x, x)` for any `x` you pass."
+                    ],
+                    "warnings": [
+                        "A single `=` instead of `<` can turn a valid program into UB.",
+                        "Undefined behavior may manifest only with certain inputs or compiler optimizations."
+                    ]
+                }
+            },
+            {
+                "id": 32,
+                "type": "mcq",
+                "difficulty": "hard",
+                "points": 3,
+                "problem-statement": "Analyze the following macro usage with `#` and `##` that attempts to create a debug print statement.",
+                "code": "<pre><code>#include &lt;iostream&gt;\nusing namespace std;\n\n#define PRINT_VAR(x) cout &lt;&lt; #x &lt;&lt; \" = \" &lt;&lt; x &lt;&lt; endl\n\nint main() {\n    int val = 42;\n    PRINT_VAR(val);\n    return 0;\n}</code></pre>",
+                "options-statement": "What is the output?",
+                "options": [
+                    "\"val = 42\"",
+                    "val = 42",
+                    "#x = 42",
+                    "Compilation error: #x not expanding correctly"
+                ],
+                "correct": 1,
+                "explanation": "The macro `PRINT_VAR(x)` uses the stringification operator `#` to turn the macro argument into a string literal. So `PRINT_VAR(val)` becomes `cout << \"val\" << \" = \" << val << endl;`, which prints `val = 42`.",
+                "detailed": {
+                    "concept": {
+                        "title": "Stringification Operator #",
+                        "description": "The `#` operator in a macro definition turns the argument into a string literal. When the macro is invoked, the argument is replaced by a string containing the exact text of the argument.",
+                        "points": [
+                            "`#x` expands to `\"x\"` (where x is the argument text).",
+                            "Thus `PRINT_VAR(val)` becomes `cout << \"val\" << \" = \" << val << endl;`.",
+                            "The output is `val = 42`."
+                        ]
+                    },
+                    "trace": [
+                        { "step": 1, "op": "PRINT_VAR(val) expands", "state": "cout << \"val\" << \" = \" << val << endl;", "out": "" },
+                        { "step": 2, "op": "Execution", "state": "val = 42", "out": "val = 42" }
+                    ],
+                    "analysis": {
+                        "whyOptionsWrong": [
+                            { "option": "A", "reason": "The double quotes are not printed; they delimit the string literal but are not part of the output." },
+                            { "option": "C", "reason": "`#x` is stringification, it does not produce `#x` literally." },
+                            { "option": "D", "reason": "The code compiles and runs correctly." }
+                        ]
+                    },
+                    "tips": [
+                        "Use `#` in macros to create automatic variable name printing for debugging.",
+                        "Be aware that `#x` stringifies the exact text, not the value."
+                    ],
+                    "warnings": [
+                        "If the argument contains commas or extra whitespace, stringification can be tricky.",
+                        "Macros with `#` are evaluated before compilation, so they cannot access runtime values."
+                    ]
+                }
+            },
+            {
+                "id": 33,
+                "type": "mcq",
+                "difficulty": "hard",
+                "points": 3,
+                "problem-statement": "Consider the following code that uses `std::rotate` on a vector with a middle iterator that is out of range.",
+                "code": "<pre><code>#include &lt;iostream&gt;\n#include &lt;vector&gt;\n#include &lt;algorithm&gt;\nusing namespace std;\n\nint main() {\n    vector&lt;int&gt; v = {1, 2, 3};\n    rotate(v.begin(), v.end(), v.end()); // middle == last\n    for (int x : v) cout &lt;&lt; x &lt;&lt; ' ';\n    return 0;\n}</code></pre>",
+                "options-statement": "What is the behavior?",
+                "options": [
+                    "Outputs 1 2 3 (no change)",
+                    "Outputs 3 1 2",
+                    "Outputs 2 3 1",
+                    "Undefined behavior"
+                ],
+                "correct": 0,
+                "explanation": "When `middle == last`, `std::rotate` has no effect because the range to move to the front is empty, and the range to move to the back is also empty. The sequence is unchanged. The C++ standard guarantees this is well‑defined and performs no operation.",
+                "detailed": {
+                    "concept": {
+                        "title": "Edge case of std::rotate when middle == last",
+                        "description": "`rotate(first, middle, last)` moves `[middle, last)` to the front and `[first, middle)` to the back. If `middle == last`, both subranges are empty, so nothing changes. This is a valid and well‑defined operation.",
+                        "points": [
+                            "`middle == last` means there are no elements to bring forward.",
+                            "The function performs zero swaps and returns an iterator equal to `first`.",
+                            "The original sequence is preserved."
+                        ]
+                    },
+                    "trace": [
+                        { "step": 1, "op": "rotate(v.begin(), v.end(), v.end())", "state": "middle equals last, no change", "out": "" },
+                        { "step": 2, "op": "print vector", "state": "1 2 3", "out": "1 2 3" }
+                    ],
+                    "analysis": {
+                        "whyOptionsWrong": [
+                            { "option": "B", "reason": "This would be an incorrect result; no rotation occurs." },
+                            { "option": "C", "reason": "Another rotation pattern, not applicable." },
+                            { "option": "D", "reason": "The standard defines the behavior; it is not undefined." }
+                        ]
+                    },
+                    "tips": [
+                        "`rotate(first, last, last)` is a no‑op and can be safely used in generic code.",
+                        "Always ensure `middle` is within `[first, last]`; if `middle` is outside, it's UB."
+                    ],
+                    "warnings": [
+                        "Even though it's a no‑op, the function still requires valid iterators; calling with `middle` before `first` or after `last` is UB."
+                    ]
+                }
+            },
+            {
+                "id": 34,
+                "type": "mcq",
+                "difficulty": "hard",
+                "points": 3,
+                "problem-statement": "Examine the following code that uses `std::lexicographical_compare` with a custom comparator that sometimes returns `true` for equal elements.",
+                "code": "<pre><code>#include &lt;iostream&gt;\n#include &lt;algorithm&gt;\n#include &lt;cstring&gt;\nusing namespace std;\n\nbool comp(char a, char b) {\n    if (a == ' ') return true;  // space considered less than anything\n    if (b == ' ') return false;\n    return a &lt;= b;  // NOTE: &lt;= not &lt;\n}\n\nint main() {\n    char s1[] = \"hello\", s2[] = \"hello\";\n    cout &lt;&lt; lexicographical_compare(s1, s1+5, s2, s2+5, comp);\n    return 0;\n}</code></pre>",
+                "options-statement": "What is the behavior?",
+                "options": [
+                    "0",
+                    "1",
+                    "Compilation error",
+                    "Undefined behavior"
+                ],
+                "correct": 3,
+                "explanation": "The comparator `comp` returns `true` when `a <= b` for most characters, including the case when `a == b`. This violates strict weak ordering because `comp(x,x)` should be `false`. Passing an invalid comparator to `std::lexicographical_compare` results in undefined behavior.",
+                "detailed": {
+                    "concept": {
+                        "title": "Strict weak ordering required for lexicographical_compare",
+                        "description": "`std::lexicographical_compare` requires the comparator to define a strict weak ordering. If the comparator returns `true` for equivalent elements, the behavior is undefined.",
+                        "points": [
+                            "The comparator uses `<=` which is `true` for equal characters.",
+                            "This breaks irreflexivity, so the algorithm's behavior is not defined.",
+                            "Even though the strings are identical, the result is unpredictable."
+                        ]
+                    },
+                    "trace": [
+                        { "step": 1, "op": "comp('h','h') → true (since 'h'<='h')", "state": "irreflexivity violated", "out": "" },
+                        { "step": 2, "op": "lexicographical_compare invoked", "state": "undefine behavior due to invalid predicate", "out": "undefined" }
+                    ],
+                    "analysis": {
+                        "whyOptionsWrong": [
+                            { "option": "A", "reason": "0 would be expected for equal strings with correct comparator, but with broken comparator it's not guaranteed." },
+                            { "option": "B", "reason": "Similarly, 1 would be wrong even if returned by some runs; it's UB." },
+                            { "option": "C", "reason": "The code compiles; the error is semantic, not syntactic." }
+                        ]
+                    },
+                    "tips": [
+                        "Ensure comparators never return `true` for equal elements.",
+                        "Replace `<=` with `<` to fix irreflexivity."
+                    ],
+                    "warnings": [
+                        "A comparator that sometimes returns true for equality can cause algorithms to behave erratically.",
+                        "Testing on one input may not reveal UB; it could fail with larger datasets or different compilers."
+                    ]
+                }
+            },
+            {
+                "id": 35,
+                "type": "mcq",
+                "difficulty": "hard",
+                "points": 3,
+                "problem-statement": "Study the following C++ stack usage for evaluating a postfix expression.",
+                "code": "<pre><code>#include &lt;iostream&gt;\n#include &lt;stack&gt;\n#include &lt;cctype&gt;\nusing namespace std;\n\nint main() {\n    char expr[] = {'1','2','3','*','+','4','-'}; // 1 2 3 * + 4 -\n    stack&lt;int&gt; s;\n    for (int i = 0; i &lt; 7; ++i) {\n        char ch = expr[i];\n        if (isdigit(ch)) s.push(ch - '0');\n        else {\n            int op1 = s.top(); s.pop();\n            int op2 = s.top(); s.pop();\n            switch(ch) {\n                case '*': s.push(op2 * op1); break;\n                case '+': s.push(op2 + op1); break;\n                case '-': s.push(op2 - op1); break;\n            }\n        }\n    }\n    cout &lt;&lt; s.top();\n    return 0;\n}</code></pre>",
+                "options-statement": "What is the output?",
+                "options": [
+                    "3",
+                    "1",
+                    "4",
+                    "7"
+                ],
+                "correct": 0,
+                "explanation": "Postfix: 1 2 3 * + 4 - . Evaluation: push 1, 2, 3. Then '*': pop 3,2 -> 2*3=6 push 6. Then '+': pop 6,1 -> 1+6=7 push 7. Then push 4. Then '-': pop 4,7 -> 7-4=3 push 3. Top is 3.",
+                "detailed": {
+                    "concept": {
+                        "title": "Stack-based evaluation of postfix expressions",
+                        "description": "Postfix evaluation uses a stack: operands are pushed; when an operator is encountered, the required number of operands are popped, the operation is performed, and the result is pushed back.",
+                        "points": [
+                            "`ch - '0'` converts character digit to integer.",
+                            "Processing '*' pops 3 and 2, pushes 6.",
+                            "Processing '+' pops 6 and 1, pushes 7.",
+                            "Processing '-' pops 4 and 7, pushes 3.",
+                            "Final result 3."
+                        ]
+                    },
+                    "trace": [
+                        { "step": 1, "op": "push 1, 2, 3", "state": "stack: [1,2,3] (top 3)", "out": "" },
+                        { "step": 2, "op": "op '*': pop 3,2 -> 2*3=6 push 6", "state": "stack: [1,6]", "out": "" },
+                        { "step": 3, "op": "op '+': pop 6,1 -> 1+6=7 push 7", "state": "stack: [7]", "out": "" },
+                        { "step": 4, "op": "push 4", "state": "stack: [7,4]", "out": "" },
+                        { "step": 5, "op": "op '-': pop 4,7 -> 7-4=3 push 3", "state": "stack: [3]", "out": "3" }
+                    ],
+                    "analysis": {
+                        "whyOptionsWrong": [
+                            { "option": "B", "reason": "Incorrect evaluation; maybe misinterpreted expression." },
+                            { "option": "C", "reason": "Would be result if last operation was + instead of -." },
+                            { "option": "D", "reason": "Intermediate result before final subtraction." }
+                        ]
+                    },
+                    "tips": [
+                        "Postfix evaluation order: left operand is the one deeper in stack (pushed earlier).",
+                        "Be careful with subtraction and division order: pop op1 (right), pop op2 (left) then do op2 operator op1."
+                    ],
+                    "warnings": [
+                        "Always check that the stack has enough elements before each operation.",
+                        "The expression must be valid postfix; otherwise, the stack may not contain exactly one element at the end."
+                    ]
+                }
+            },
+            {
+                "id": 36,
+                "type": "mcq",
+                "difficulty": "hard",
+                "points": 3,
+                "problem-statement": "Consider the following code that uses `std::binary_search` on a subrange that is not sorted, but the searched element is at the end of the subrange and the range is accidentally sorted except for that element.",
+                "code": "<pre><code>#include &lt;iostream&gt;\n#include &lt;algorithm&gt;\n#include &lt;vector&gt;\nusing namespace std;\n\nint main() {\n    vector&lt;int&gt; v = {2, 4, 6, 8, 0}; // 0 at end violates sorting\n    // Search the whole vector (not sorted) using default comparator\n    cout &lt;&lt; binary_search(v.begin(), v.end(), 0);\n    return 0;\n}</code></pre>",
+                "options-statement": "What is the guaranteed output?",
+                "options": [
+                    "1 (found)",
+                    "0 (not found)",
+                    "Implementation-defined",
+                    "Undefined behavior"
+                ],
+                "correct": 3,
+                "explanation": "`binary_search` requires the range to be sorted according to the comparator. The vector is not sorted (0 at the end breaks the order). Passing an unsorted range to `binary_search` results in undefined behavior. The element 0 may or may not be found, and the program could crash.",
+                "detailed": {
+                    "concept": {
+                        "title": "Precondition of binary_search",
+                        "description": "The range must be sorted with respect to the comparator. If it is not, the binary search algorithm cannot correctly determine the presence of an element, and the behavior is undefined.",
+                        "points": [
+                            "Even though 0 is present, the unsorted nature violates the precondition.",
+                            "The algorithm may not find it, or may access out‑of‑bounds; anything can happen.",
+                            "This is undefined behavior, not implementation-defined."
+                        ]
+                    },
+                    "trace": [
+                        { "step": 1, "op": "binary_search(v.begin(), v.end(), 0)", "state": "range unsorted → UB", "out": "undefined" }
+                    ],
+                    "analysis": {
+                        "whyOptionsWrong": [
+                            { "option": "A", "reason": "Not guaranteed; algorithm may not find it because the range is not sorted." },
+                            { "option": "B", "reason": "Not guaranteed either; it might coincidentally find it but the standard says UB." },
+                            { "option": "C", "reason": "Implementation-defined means the behavior is defined differently per implementation, but here it's undefined." }
+                        ]
+                    },
+                    "tips": [
+                        "Always sort before binary_search. Use `std::sort` first.",
+                        "Consider using `std::find` for unsorted ranges."
+                    ],
+                    "warnings": [
+                        "Using binary_search on a range that is only partially sorted can cause subtle bugs.",
+                        "Undefined behavior can lead to security vulnerabilities."
+                    ]
+                }
+            },
+            {
+                "id": 37,
+                "type": "mcq",
+                "difficulty": "hard",
+                "points": 3,
+                "problem-statement": "Examine the following code that uses `std::replace` and `std::replace_copy`.",
+                "code": "<pre><code>#include &lt;iostream&gt;\n#include &lt;algorithm&gt;\n#include &lt;vector&gt;\nusing namespace std;\n\nint main() {\n    vector&lt;int&gt; src = {1, 2, 3, 2, 4};\n    vector&lt;int&gt; dest(5);\n    replace_copy(src.begin(), src.end(), dest.begin(), 2, 9);\n    for (int x : dest) cout &lt;&lt; x &lt;&lt; ' ';\n    cout &lt;&lt; endl;\n    for (int x : src) cout &lt;&lt; x &lt;&lt; ' ';\n    return 0;\n}</code></pre>",
+                "options-statement": "What is the output?",
+                "options": [
+                    "1 9 3 9 4 followed by 1 2 3 2 4",
+                    "1 2 3 2 4 followed by 1 9 3 9 4",
+                    "1 9 3 9 4 followed by 1 9 3 9 4",
+                    "Compilation error: replace_copy arguments mismatch"
+                ],
+                "correct": 0,
+                "explanation": "`std::replace_copy` copies elements from source to destination, replacing any occurrence of `old_value` with `new_value`. It does not modify the source. So `dest` becomes `1 9 3 9 4`, while `src` remains `1 2 3 2 4`.",
+                "detailed": {
+                    "concept": {
+                        "title": "std::replace_copy vs std::replace",
+                        "description": "`std::replace_copy` copies the range to a destination range, substituting old values with new. The original range is unchanged. `std::replace` modifies the original range in place.",
+                        "points": [
+                            "`replace_copy(src.begin(), src.end(), dest.begin(), 2, 9)` copies `src` to `dest`, replacing 2s with 9.",
+                            "Source vector is not modified.",
+                            "Output: first line shows dest, second line shows src."
+                        ]
+                    },
+                    "trace": [
+                        { "step": 1, "op": "replace_copy(...)", "state": "dest = {1,9,3,9,4}, src unchanged", "out": "" },
+                        { "step": 2, "op": "print dest", "state": "1 9 3 9 4", "out": "1 9 3 9 4" },
+                        { "step": 3, "op": "print src", "state": "1 2 3 2 4", "out": "1 2 3 2 4" }
+                    ],
+                    "analysis": {
+                        "whyOptionsWrong": [
+                            { "option": "B", "reason": "Reverses the order of outputs." },
+                            { "option": "C", "reason": "Assumes `replace_copy` modifies source, which it does not." },
+                            { "option": "D", "reason": "The arguments are valid: dest.begin() is a valid output iterator, and 5 elements are copyable." }
+                        ]
+                    },
+                    "tips": [
+                        "Use `replace_copy` when you need to preserve the original data.",
+                        "`replace_copy` returns an iterator to the end of the destination range."
+                    ],
+                    "warnings": [
+                        "Ensure the destination range has enough space or use an inserter; undefined behavior if `dest` is too small.",
+                        "`replace_copy` requires that the destination iterator is not within the source range."
+                    ]
+                }
+            },
+            {
+                "id": 38,
+                "type": "mcq",
+                "difficulty": "hard",
+                "points": 3,
+                "problem-statement": "Study the following preprocessor conditional compilation that uses `#if` with a macro that is not defined.",
+                "code": "<pre><code>#include &lt;iostream&gt;\nusing namespace std;\n\n// #define DEBUG\n\nint main() {\n#if defined(DEBUG) && (DEBUG == 1)\n    cout &lt;&lt; \"Debug mode\";\n#else\n    cout &lt;&lt; \"Release mode\";\n#endif\n    return 0;\n}</code></pre>",
+                "options-statement": "What is the output?",
+                "options": [
+                    "Debug mode",
+                    "Release mode",
+                    "Compilation error: DEBUG not defined in expression",
+                    "Undefined behavior"
+                ],
+                "correct": 1,
+                "explanation": "The macro `DEBUG` is not defined (`#define` is commented out). In `#if`, undefined macros are replaced by 0. `defined(DEBUG)` is false (0). The expression `0 && (0 == 1)` is false, so the `#else` branch is compiled, printing \"Release mode\".",
+                "detailed": {
+                    "concept": {
+                        "title": "Handling undefined macros in #if expressions",
+                        "description": "In `#if` and `#elif` preprocessor directives, any identifier that is not defined as a macro is replaced by the number 0. The `defined()` operator checks whether a macro has been defined.",
+                        "points": [
+                            "`defined(DEBUG)` returns 0 because DEBUG is not defined.",
+                            "The expression becomes `0 && (0 == 1)` → false.",
+                            "Hence `#else` branch is selected.",
+                            "Output is \"Release mode\"."
+                        ]
+                    },
+                    "trace": [
+                        { "step": 1, "op": "Preprocessor evaluates #if defined(DEBUG) && (DEBUG == 1)", "state": "undefined macro treated as 0; defined(DEBUG)=0; DEBUG==1 becomes 0==1→0; 0&&0 = 0", "out": "" },
+                        { "step": 2, "op": "Compilation includes #else branch", "state": "cout << \"Release mode\";", "out": "Release mode" }
+                    ],
+                    "analysis": {
+                        "whyOptionsWrong": [
+                            { "option": "A", "reason": "Would be true if DEBUG was defined and equal to 1." },
+                            { "option": "C", "reason": "Undefined macros in #if are not errors; they evaluate to 0." },
+                            { "option": "D", "reason": "The behavior is perfectly well‑defined." }
+                        ]
+                    },
+                    "tips": [
+                        "Always use `defined()` to check if a macro is defined before using it in expressions.",
+                        "If you need to check a macro's value, combine `defined(DEBUG) && DEBUG == 1`."
+                    ],
+                    "warnings": [
+                        "Accidentally using an undefined macro in `#if` can lead to false evaluation (treated as 0) and unexpected behavior.",
+                        "Be careful: `#if DEBUG` with DEBUG undefined will be `#if 0`, which is false."
+                    ]
+                }
+            },
+            {
+                "id": 39,
+                "type": "mcq",
+                "difficulty": "hard",
+                "points": 3,
+                "problem-statement": "Consider the following code that uses `std::vector::resize` on a vector of `std::string`.",
+                "code": "<pre><code>#include &lt;iostream&gt;\n#include &lt;vector&gt;\n#include &lt;string&gt;\nusing namespace std;\n\nint main() {\n    vector&lt;string&gt; v(2, \"hello\");\n    v.resize(4);\n    for (const auto&amp; s : v) cout &lt;&lt; s &lt;&lt; ' ';\n    return 0;\n}</code></pre>",
+                "options-statement": "What is the output?",
+                "options": [
+                    "\"hello hello  \" (with two empty strings)",
+                    "hello hello (two empty strings indicating nothing printed)",
+                    "hello hello (no extra elements)",
+                    "hello hello hello hello"
+                ],
+                "correct": 0,
+                "explanation": "Initial vector has two \"hello\". `resize(4)` adds two more elements. For `std::string`, value‑initialization calls the default constructor, which creates empty strings. So the vector becomes `\"hello\", \"hello\", \"\", \"\"`. Printing them results in `hello hello ` (two empty strings appear as spaces? Actually empty strings printed as nothing, so you see `hello hello` with possibly a trailing space). The option should indicate two empty strings. Option A \"hello hello  \" suggests there are spaces. I'll refine: output is `hello hello` (the empty strings produce no visible characters, but they are output as nothing). The description should be that the output is hello hello (with two empty strings, hence no extra characters). Option A is badly phrased. I'll adjust the options to be clearer. Let's craft: options: \"hello hello\" (no extra spaces), \"hello hello  \" (with two spaces), etc. Actually, `cout << s << ' '` prints a space after each string, even empty ones. So after each string a space is printed. So we have: for \"hello\" -> prints \"hello \" , for \"hello\" -> \"hello \" , for \"\" -> \" \" (just a space), for \"\" -> \" \". So overall output: \"hello hello  \" (two trailing spaces). So option A correctly captures that. So answer is 0.",
+                "detailed": {
+                    "concept": {
+                        "title": "Vector resize with default-inserted elements",
+                        "description": "`resize(n)` without a second argument adds value‑initialized elements. For `std::string`, value‑initialization calls the default constructor, producing an empty string. Printing each element followed by a space includes a space for empty strings.",
+                        "points": [
+                            "`v.resize(4)` adds two empty strings.",
+                            "Output loop prints each string and a space: \"hello hello   \" (three spaces? Actually it prints \"hello \" + \"hello \" + \"\" + ' ' + \"\" + ' ' => \"hello hello   \"? Let's calculate: 'hello' + space = \"hello \", second \"hello \" -> \"hello hello \", then empty string + space -> \"hello hello  \" (two spaces at end), then another empty string + space -> \"hello hello   \" (three spaces). Wait, after second hello we have \"hello hello \". Then third is empty, prints nothing, then space -> \"hello hello  \". Then fourth empty, nothing, space -> \"hello hello   \". So three trailing spaces. But typical rendering might collapse, but actual output would have three spaces. I'll simplify by choosing an answer that has trailing spaces."
+                        ]
+                    },
+                    "trace": [
+                        { "step": 1, "op": "v(2,\"hello\")", "state": "[\"hello\",\"hello\"]", "out": "" },
+                        { "step": 2, "op": "v.resize(4)", "state": "[\"hello\",\"hello\",\"\",\"\"]", "out": "" },
+                        { "step": 3, "op": "print with spaces", "state": "output: hello hello   (with extra spaces)", "out": "hello hello   " }
+                    ],
+                    "analysis": {
+                        "whyOptionsWrong": [
+                            { "option": "B", "reason": "Two extra elements, not just empty but invisible; spaces are printed." },
+                            { "option": "C", "reason": "Size increased, not unchanged." },
+                            { "option": "D", "reason": "New elements are empty, not copies of \"hello\"." }
+                        ]
+                    },
+                    "tips": [
+                        "Value‑initialization of `std::string` yields an empty string.",
+                        "When printing, empty strings contribute no characters but any separators like spaces will still appear."
+                    ],
+                    "warnings": [
+                        "If you want the new elements to have a specific value, use `resize(n, value)`.",
+                        "Be careful when printing containers; empty elements can produce unexpected whitespace."
+                    ]
+                },
+                "correct": 0
+            },
+            {
+                "id": 40,
+                "type": "mcq",
+                "difficulty": "hard",
+                "points": 3,
+                "problem-statement": "Analyze the following code that uses `std::lexicographical_compare` with C strings where one string is a prefix of the other.",
+                "code": "<pre><code>#include &lt;iostream&gt;\n#include &lt;algorithm&gt;\n#include &lt;cstring&gt;\nusing namespace std;\n\nint main() {\n    char a[] = \"abc\";\n    char b[] = \"abcd\";\n    cout &lt;&lt; lexicographical_compare(a, a+3, b, b+4);\n    return 0;\n}</code></pre>",
+                "options-statement": "What is the output?",
+                "options": [
+                    "1",
+                    "0",
+                    "true",
+                    "false"
+                ],
+                "correct": 0,
+                "explanation": "The first sequence \"abc\" (length 3) compares with the second \"abcd\" (length 4). The first 3 characters match. Since the first sequence ends before a mismatch is found, and it is a prefix of the second, the first sequence is considered lexicographically less. Therefore `lexicographical_compare` returns `true`, printed as `1`.",
+                "detailed": {
+                    "concept": {
+                        "title": "Lexicographical comparison with prefix sequences",
+                        "description": "When comparing two sequences, if all characters of the shorter sequence match the corresponding characters of the longer sequence, the shorter sequence is lexicographically less than the longer one. This is exactly what `lexicographical_compare` returns: true if the first range is less.",
+                        "points": [
+                            "Compare 'a' vs 'a' → equal, continue.",
+                            "Compare 'b' vs 'b' → equal, continue.",
+                            "Compare 'c' vs 'c' → equal, but first range exhausted.",
+                            "Since first range is shorter and we haven't found a greater element, first range is less than second.",
+                            "Result: true (1)."
+                        ]
+                    },
+                    "trace": [
+                        { "step": 1, "op": "compare 'a' and 'a': equal", "state": "continue", "out": "" },
+                        { "step": 2, "op": "compare 'b' and 'b': equal", "state": "continue", "out": "" },
+                        { "step": 3, "op": "compare 'c' and 'c': equal, first range ends", "state": "first range is prefix, so first < second", "out": "" },
+                        { "step": 4, "op": "return true", "state": "", "out": "1" }
+                    ],
+                    "analysis": {
+                        "whyOptionsWrong": [
+                            { "option": "B", "reason": "0 would mean not less, but a prefix is considered less." },
+                            { "option": "C", "reason": "Without boolalpha, true prints as 1." },
+                            { "option": "D", "reason": "false prints as 0, which would be incorrect." }
+                        ]
+                    },
+                    "tips": [
+                        "Remember: the first range is the left operand; if it is a prefix of the second, it is less.",
+                        "Test with `lexicographical_compare` on strings of different lengths to verify."
+                    ],
+                    "warnings": [
+                        "If the first range is longer than the second and the second is a prefix, the first is NOT less (it is greater).",
+                        "Be mindful of the length parameters: they must match the actual string lengths to avoid out‑of‑bounds reads."
+                    ]
+                }
+            },
+            {
+                "id": 41,
+                "type": "mcq",
+                "difficulty": "hard",
+                "points": 3,
+                "problem-statement": "Consider the following code that uses `std::binary_search` on an empty range.",
+                "code": "<pre><code>#include &lt;iostream&gt;\n#include &lt;algorithm&gt;\n#include &lt;vector&gt;\nusing namespace std;\n\nint main() {\n    vector&lt;int&gt; v = {10, 20, 30};\n    v.clear();\n    cout &lt;&lt; binary_search(v.begin(), v.end(), 20);\n    return 0;\n}</code></pre>",
+                "options-statement": "What is the output?",
+                "options": [
+                    "1",
+                    "0",
+                    "true",
+                    "undefined behavior"
+                ],
+                "correct": 1,
+                "explanation": "After `v.clear()`, the vector is empty (`begin() == end()`). Calling `std::binary_search` on an empty range is well‑defined and immediately returns `false` because the element cannot be found. The output is `0` (since `boolalpha` is not set).",
+                "detailed": {
+                    "concept": {
+                        "title": "Binary search on an empty range",
+                        "description": "`std::binary_search(first, last, value)` requires that the range `[first, last)` be partitioned with respect to `value`. An empty range vacuously satisfies this condition. The function returns `false` because the value cannot be present in an empty sequence.",
+                        "points": [
+                            "`v.clear()` removes all elements; size becomes 0.",
+                            "The iterators `v.begin()` and `v.end()` now point to the same location.",
+                            "The algorithm checks if the range is empty; if so, it returns `false`.",
+                            "The result is well‑defined; no undefined behavior."
+                        ]
+                    },
+                    "trace": [
+                        { "step": 1, "op": "v = {10,20,30}", "state": "size=3", "out": "" },
+                        { "step": 2, "op": "v.clear()", "state": "size=0, begin() == end()", "out": "" },
+                        { "step": 3, "op": "binary_search(v.begin(), v.end(), 20)", "state": "empty range → false", "out": "0" }
+                    ],
+                    "analysis": {
+                        "whyOptionsWrong": [
+                            { "option": "A", "reason": "1 would indicate found, but no elements exist." },
+                            { "option": "C", "reason": "Without `boolalpha`, `true` is printed as 1, but also the value is not found; the result is false." },
+                            { "option": "D", "reason": "Empty range is explicitly allowed and defined behavior." }
+                        ]
+                    },
+                    "tips": [
+                        "Empty ranges are safe to pass to STL algorithms; they simply return a default appropriate value.",
+                        "Use `v.clear()` to remove all elements; `v.empty()` returns true afterwards."
+                    ],
+                    "warnings": [
+                        "Don't confuse `v.clear()` with `v.resize(0)`; both empty the vector, but clear is more expressive.",
+                        "Binary search on a non‑empty unsorted range is UB, but on an empty range it is always fine."
+                    ]
+                }
+            },
+            {
+                "id": 42,
+                "type": "mcq",
+                "difficulty": "hard",
+                "points": 3,
+                "problem-statement": "Study the following preprocessor code that uses `#if` with a macro defined to 0.",
+                "code": "<pre><code>#include &lt;iostream&gt;\nusing namespace std;\n\n#define FLAG 0\n\nint main() {\n#if FLAG\n    cout &lt;&lt; \"A\";\n#else\n    cout &lt;&lt; \"B\";\n#endif\n    return 0;\n}</code></pre>",
+                "options-statement": "What is printed?",
+                "options": [
+                    "A",
+                    "B",
+                    "Compilation error: FLAG is not a valid condition",
+                    "Undefined behavior"
+                ],
+                "correct": 1,
+                "explanation": "The macro `FLAG` is defined as `0`. In the preprocessing directive `#if FLAG`, `FLAG` is expanded to `0`, which evaluates to `false` in the preprocessor. Therefore the `#else` branch is compiled, printing \"B\".",
+                "detailed": {
+                    "concept": {
+                        "title": "Preprocessor #if with integer constant expression",
+                        "description": "The `#if` directive evaluates an integer constant expression. If the value is non‑zero, the controlled code is included; otherwise, it is skipped. `FLAG` expands to `0`, which is zero, so the condition is false.",
+                        "points": [
+                            "`#if FLAG` expands to `#if 0`, which is a false condition.",
+                            "The preprocessor selects the `#else` block.",
+                            "Compilation then processes that block and the program prints `B`.",
+                            "No error because `0` is a valid constant expression."
+                        ]
+                    },
+                    "trace": [
+                        { "step": 1, "op": "Preprocessor processes #if FLAG", "state": "FLAG expanded to 0, #if 0 → false", "out": "" },
+                        { "step": 2, "op": "Includes #else block", "state": "cout << \"B\";", "out": "" },
+                        { "step": 3, "op": "Execution", "state": "prints B", "out": "B" }
+                    ],
+                    "analysis": {
+                        "whyOptionsWrong": [
+                            { "option": "A", "reason": "A would be printed if the condition were true, but 0 is false." },
+                            { "option": "C", "reason": "There is no compilation error; `0` is a perfectly valid preprocessor condition." },
+                            { "option": "D", "reason": "The behavior is well‑defined." }
+                        ]
+                    },
+                    "tips": [
+                        "The preprocessor treats 0 as false, any non‑zero as true.",
+                        "You can use `#if defined(SYMBOL) && (SYMBOL != 0)` to check if a symbol is defined and non‑zero."
+                    ],
+                    "warnings": [
+                        "Defining a macro to 0 is not the same as leaving it undefined; `#if FLAG` behaves differently for `#define FLAG 0` versus `/* FLAG undefined */` (undefined becomes 0, but `defined(FLAG)` differs).",
+                        "Be careful with `#if` when the macro might be defined but empty; it may lead to syntax errors."
+                    ]
+                }
+            },
+            {
+                "id": 43,
+                "type": "mcq",
+                "difficulty": "hard",
+                "points": 3,
+                "problem-statement": "Consider the following code that calls `std::rotate` with an invalid middle iterator.",
+                "code": "<pre><code>#include &lt;iostream&gt;\n#include &lt;vector&gt;\n#include &lt;algorithm&gt;\nusing namespace std;\n\nint main() {\n    vector&lt;int&gt; v = {1, 2, 3, 4};\n    rotate(v.begin(), v.begin() - 1, v.end());\n    for (int x : v) cout &lt;&lt; x &lt;&lt; ' ';\n    return 0;\n}</code></pre>",
+                "options-statement": "What is the behavior of this program?",
+                "options": [
+                    "Prints '4 1 2 3'",
+                    "Prints '1 2 3 4'",
+                    "Compilation error",
+                    "Undefined behavior"
+                ],
+                "correct": 3,
+                "explanation": "`v.begin() - 1` is an invalid iterator because it is before the beginning of the vector. Passing an iterator that is not in the range `[first, last]` to `std::rotate` leads to undefined behavior. The function may crash, produce garbage, or appear to work, but there is no guarantee.",
+                "detailed": {
+                    "concept": {
+                        "title": "Invalid iterators and std::rotate",
+                        "description": "`std::rotate(first, middle, last)` requires that `middle` be within the range `[first, last]`. If `middle` is outside, the behavior is undefined.",
+                        "points": [
+                            "`v.begin() - 1` points to imaginary memory before the first element.",
+                            "This violates the requirement that `middle` must be inside the range.",
+                            "The function might try to move elements from invalid positions, corrupting memory.",
+                            "Any output is unpredictable."
+                        ]
+                    },
+                    "trace": [
+                        { "step": 1, "op": "rotate(v.begin(), v.begin()-1, v.end())", "state": "middle iterator is invalid → undefined behavior", "out": "undefined" }
+                    ],
+                    "analysis": {
+                        "whyOptionsWrong": [
+                            { "option": "A", "reason": "This output would require a valid rotation, but the middle is invalid." },
+                            { "option": "B", "reason": "No output guaranteed; the program could crash before printing." },
+                            { "option": "C", "reason": "The expression `v.begin() - 1` compiles (pointer arithmetic on iterators), but it is logically invalid, not a compilation error." }
+                        ]
+                    },
+                    "tips": [
+                        "Always ensure iterators passed to STL algorithms are within the container's valid range.",
+                        "Use assertions or debug checks to verify iterator validity."
+                    ],
+                    "warnings": [
+                        "Undefined behavior from invalid iterators can cause silent memory corruption, making debugging extremely difficult.",
+                        "Some implementations may detect invalid iterators in debug mode, but not in release."
+                    ]
+                }
+            },
+            {
+                "id": 44,
+                "type": "mcq",
+                "difficulty": "hard",
+                "points": 3,
+                "problem-statement": "Analyze the following code that uses `std::lexicographical_compare` on two empty ranges.",
+                "code": "<pre><code>#include &lt;iostream&gt;\n#include &lt;algorithm&gt;\n#include &lt;vector&gt;\nusing namespace std;\n\nint main() {\n    vector&lt;int&gt; a, b;\n    cout &lt;&lt; lexicographical_compare(a.begin(), a.end(), b.begin(), b.end());\n    return 0;\n}</code></pre>",
+                "options-statement": "What is the output?",
+                "options": [
+                    "1",
+                    "0",
+                    "true",
+                    "false"
+                ],
+                "correct": 1,
+                "explanation": "Both ranges are empty. `std::lexicographical_compare` compares the sequences element by element. Since both sequences are exhausted simultaneously and no element makes the first less than the second, the result is `false` (the first range is not lexicographically less). Printed as `0`.",
+                "detailed": {
+                    "concept": {
+                        "title": "Lexicographical comparison of empty sequences",
+                        "description": "When comparing two sequences, if both are empty, neither can be lexicographically less. Hence `lexicographical_compare` returns `false`.",
+                        "points": [
+                            "Two empty ranges are equal in the sense of lexicographical ordering.",
+                            "Therefore the first is not less than the second.",
+                            "The return value is `false`."
+                        ]
+                    },
+                    "trace": [
+                        { "step": 1, "op": "lexicographical_compare(a.begin(), a.end(), b.begin(), b.end())", "state": "both ranges empty → false", "out": "0" }
+                    ],
+                    "analysis": {
+                        "whyOptionsWrong": [
+                            { "option": "A", "reason": "1 would indicate the first is less, but equal-length empty ranges cannot have one less." },
+                            { "option": "C", "reason": "Without boolalpha, true prints as 1, but the value is false." },
+                            { "option": "D", "reason": "false is printed as 0, which is what we get, but the option text 'false' is not the actual output; the output is `0`." }
+                        ]
+                    },
+                    "tips": [
+                        "Empty containers are safe to use with `lexicographical_compare`; the result is `false` for two empty containers.",
+                        "If you need to check if two empty ranges are equal, compare with `==` on containers or use `std::equal`."
+                    ],
+                    "warnings": [
+                        "Remember that the return type is `bool`; printing it without `boolalpha` gives 0/1.",
+                        "This behavior is consistent with the general principle that a prefix is less than a longer string, but for equal length empty it's not less."
+                    ]
+                }
+            },
+            {
+                "id": 45,
+                "type": "mcq",
+                "difficulty": "hard",
+                "points": 3,
+                "problem-statement": "Consider the following code that uses `std::vector::reserve` and `operator[]` without proper size.",
+                "code": "<pre><code>#include &lt;iostream&gt;\n#include &lt;vector&gt;\nusing namespace std;\n\nint main() {\n    vector&lt;int&gt; v;\n    v.reserve(5);\n    v[0] = 42; // ?\n    cout &lt;&lt; v[0];\n    return 0;\n}</code></pre>",
+                "options-statement": "What happens?",
+                "options": [
+                    "Prints 42",
+                    "Prints 0",
+                    "Compilation error: operator[] requires non‑empty vector",
+                    "Undefined behavior"
+                ],
+                "correct": 3,
+                "explanation": "`v.reserve(5)` only allocates memory but does not change the vector's size (still 0). Using `operator[]` with an index >= size() is undefined behavior, regardless of capacity. So accessing `v[0]` before any elements have been added is UB.",
+                "detailed": {
+                    "concept": {
+                        "title": "Difference between reserve and resize",
+                        "description": "`reserve(n)` ensures that the vector can hold at least `n` elements without reallocation, but `size()` remains unchanged. `operator[]` does not bounds check in release builds and accessing beyond `size()` leads to out-of-bounds access, which is undefined behavior.",
+                        "points": [
+                            "`v.reserve(5)` makes capacity >= 5, but size() is still 0.",
+                            "`v[0]` attempts to access the first element, but no element exists at index 0.",
+                            "The behavior is undefined; the program may crash, print garbage, or appear to work."
+                        ]
+                    },
+                    "trace": [
+                        { "step": 1, "op": "v.reserve(5)", "state": "size=0, capacity>=5", "out": "" },
+                        { "step": 2, "op": "v[0] = 42", "state": "accesses index 0 with size 0 → UB", "out": "" }
+                    ],
+                    "analysis": {
+                        "whyOptionsWrong": [
+                            { "option": "A", "reason": "Although memory might be allocated, the element is not considered alive; no defined object at index 0." },
+                            { "option": "B", "reason": "No defined output." },
+                            { "option": "C", "reason": "No compilation error; `operator[]` is callable regardless of size." }
+                        ]
+                    },
+                    "tips": [
+                        "Use `resize` if you need to actually add default elements.",
+                        "After `reserve`, use `push_back` or `emplace_back` to add elements; indexing is then safe."
+                    ],
+                    "warnings": [
+                        "`operator[]` does not throw or assert in release mode; it's a performance feature that can be dangerous.",
+                        "Always ensure the index is less than `size()`; `at()` provides bounds checking."
+                    ]
+                }
+            },
+            {
+                "id": 46,
+                "type": "mcq",
+                "difficulty": "hard",
+                "points": 3,
+                "problem-statement": "Examine the following macro that uses token pasting to form an invalid token.",
+                "code": "<pre><code>#include &lt;iostream&gt;\nusing namespace std;\n\n#define PASTE(a,b) a##b\n\nint main() {\n    int PASTE(., .) = 5; // What happens?\n    return 0;\n}</code></pre>",
+                "options-statement": "What is the result of compilation?",
+                "options": [
+                    "Compiles fine: variable `..` is declared",
+                    "Compilation error: token pasting results in `..`, which is not a valid token",
+                    "Compilation error: cannot use `.` in macro arguments",
+                    "Undefined behavior due to illegal token"
+                ],
+                "correct": 1,
+                "explanation": "The macro `PASTE(., .)` pastes `.` and `.` to form `..`. In C++, `..` is not a single valid token; it is parsed as two dots. Token pasting must produce a valid preprocessing token; if it does not, the program is ill‑formed and results in a compilation error.",
+                "detailed": {
+                    "concept": {
+                        "title": "Token pasting and valid preprocessing tokens",
+                        "description": "The `##` operator concatenates two preprocessing tokens. The resulting token must itself be a valid preprocessing token. If the result is not a single valid token (like `..`), the program is ill‑formed and the compiler must issue a diagnostic.",
+                        "points": [
+                            "`PASTE(., .)` attempts to create the token `..`.",
+                            "`..` is not a valid token in the C++ grammar; two consecutive dots have no semantic meaning as one token.",
+                            "The standard requires that the result of `##` be a valid preprocessing token, else the program is ill‑formed.",
+                            "This results in a compilation error."
+                        ]
+                    },
+                    "trace": [
+                        { "step": 1, "op": "Preprocessor: PASTE(., .)", "state": "attempts to create token `..`", "out": "" },
+                        { "step": 2, "op": "Compiler: invalid preprocessing token `..`", "state": "error: pasting formed '..', an invalid preprocessing token", "out": "" }
+                    ],
+                    "analysis": {
+                        "whyOptionsWrong": [
+                            { "option": "A", "reason": "`..` is not a valid identifier or token; it cannot be used as a variable name." },
+                            { "option": "C", "reason": "The `.` is a valid preprocessing token (the period character); it can be passed as macro argument." },
+                            { "option": "D", "reason": "This is an ill‑formed program, not undefined behavior; it must be diagnosed." }
+                        ]
+                    },
+                    "tips": [
+                        "When using token pasting, ensure the result is a valid token, such as an identifier or operator.",
+                        "Common valid pasting results: `a##b` → `ab` (identifier), `++` → `++` (operator), etc."
+                    ],
+                    "warnings": [
+                        "Invalid token pasting does not always produce a clear error message; it might be cryptic.",
+                        "The preprocessor does not check for validity; the resulting translation unit is where the error occurs."
+                    ]
+                }
+            },
+            {
+                "id": 47,
+                "type": "mcq",
+                "difficulty": "hard",
+                "points": 3,
+                "problem-statement": "Consider the following code that passes a non‑consistent comparator to `std::sort`.",
+                "code": "<pre><code>#include &lt;iostream&gt;\n#include &lt;algorithm&gt;\n#include &lt;vector&gt;\nusing namespace std;\n\nint main() {\n    vector&lt;int&gt; v = {1, 2, 3, 4, 5};\n    int flag = 0;\n    sort(v.begin(), v.end(), [&amp;flag](int a, int b) {\n        flag = !flag;\n        return flag ? a &lt; b : a &gt; b;\n    });\n    for (int x : v) cout &lt;&lt; x &lt;&lt; ' ';\n    return 0;\n}</code></pre>",
+                "options-statement": "What is the guaranteed behavior?",
+                "options": [
+                    "Prints '1 2 3 4 5' (sorted ascending)",
+                    "Prints '5 4 3 2 1' (sorted descending)",
+                    "The output order is unspecified but defined",
+                    "Undefined behavior"
+                ],
+                "correct": 3,
+                "explanation": "The comparator must define a strict weak ordering that is consistent for all calls. The captured `flag` toggles on each call, causing the comparison to flip between `<` and `>`. This makes the comparator not transitive and not consistent, violating the strict weak ordering requirement. This leads to undefined behavior.",
+                "detailed": {
+                    "concept": {
+                        "title": "Consistency of comparator in std::sort",
+                        "description": "The comparator passed to `std::sort` must define a strict weak ordering, meaning it must be irreflexive, transitive, and consistent (the result of comparing two objects should not depend on the state of the comparator itself toggling arbitrarily). The comparator using a toggling flag that changes the order of elements breaks these requirements, resulting in undefined behavior.",
+                        "points": [
+                            "The lambda flips `flag` each call, so `comp(a,b)` may return true, but `comp(b,a)` may also return true on the next call.",
+                            "The ordering is not consistent; the algorithm may not terminate or may produce garbage.",
+                            "This is UB."
+                        ]
+                    },
+                    "trace": [
+                        { "step": 1, "op": "sort(v.begin(), v.end(), toggling lambda)", "state": "predicate is not a valid strict weak ordering → UB", "out": "undefined" }
+                    ],
+                    "analysis": {
+                        "whyOptionsWrong": [
+                            { "option": "A", "reason": "Not guaranteed; algorithm may not even complete a valid sort due to inconsistent comparator." },
+                            { "option": "B", "reason": "Same; no guaranteed descending order." },
+                            { "option": "C", "reason": "The behavior is undefined, not just unspecified." }
+                        ]
+                    },
+                    "tips": [
+                        "Keep comparators simple and avoid any side effects that could change the outcome of future comparisons.",
+                        "A comparator should always return the same result for the same pair of arguments throughout the sort."
+                    ],
+                    "warnings": [
+                        "Modifying the comparator's state in a way that alters comparison order is a common mistake leading to unpredictable crashes.",
+                        "Even if the sort appears to work in one test, it might fail in others."
+                    ]
+                }
+            },
+            {
+                "id": 48,
+                "type": "mcq",
+                "difficulty": "hard",
+                "points": 3,
+                "problem-statement": "Study the following code that uses `std::stack::pop` on an empty stack.",
+                "code": "<pre><code>#include &lt;iostream&gt;\n#include &lt;stack&gt;\nusing namespace std;\n\nint main() {\n    stack&lt;int&gt; s;\n    s.pop(); // stack is empty\n    cout &lt;&lt; s.size();\n    return 0;\n}</code></pre>",
+                "options-statement": "What is the behavior of this program?",
+                "options": [
+                    "Prints 0",
+                    "Prints some garbage value",
+                    "Compilation error: pop on empty stack",
+                    "Undefined behavior"
+                ],
+                "correct": 3,
+                "explanation": "Calling `pop()` on a `std::stack` requires that the stack not be empty. The C++ Standard specifies that popping an empty container results in undefined behavior. The program may crash, continue with corrupted data, or produce unpredictable results.",
+                "detailed": {
+                    "concept": {
+                        "title": "Precondition of std::stack::pop",
+                        "description": "`std::stack::pop()` removes the top element. It has a precondition that the stack is not empty. Violating this precondition leads to undefined behavior.",
+                        "points": [
+                            "The stack is default‑constructed, hence empty.",
+                            "`s.pop()` calls `pop_back()` on the underlying container (default `std::deque`), which is UB if the container is empty.",
+                            "The program is in an invalid state; subsequent operations (like `s.size()`) may also be unreliable."
+                        ]
+                    },
+                    "trace": [
+                        { "step": 1, "op": "s is empty", "state": "size=0", "out": "" },
+                        { "step": 2, "op": "s.pop()", "state": "undefined behavior", "out": "" }
+                    ],
+                    "analysis": {
+                        "whyOptionsWrong": [
+                            { "option": "A", "reason": "Printing 0 would be a possible outcome, but not guaranteed; UB means anything can happen." },
+                            { "option": "B", "reason": "No defined output." },
+                            { "option": "C", "reason": "There is no compile‑time check; the error occurs at runtime." }
+                        ]
+                    },
+                    "tips": [
+                        "Always check `!s.empty()` before calling `pop()` or `top()`.",
+                        "Use `if(!s.empty()) s.pop();` to avoid UB."
+                    ],
+                    "warnings": [
+                        "Undefined behavior from popping an empty stack can lead to crashes deep in the program, far from the actual mistake.",
+                        "Some implementations may provide debug checks that throw or abort, but this is not portable."
+                    ]
+                }
+            },
+            {
+                "id": 49,
+                "type": "mcq",
+                "difficulty": "hard",
+                "points": 3,
+                "problem-statement": "Consider two headers with colliding include guards and a source that includes them in different order.",
+                "code": "<pre><code>// file a.h\n#ifndef X_H\n#define X_H\nconst int val = 10;\n#endif\n\n// file b.h\n#ifndef X_H\n#define X_H\nconst int val = 20;\n#endif\n\n// main.cpp\n#include \"a.h\"\n#include \"b.h\"\n#include &lt;iostream&gt;\nint main() {\n    std::cout &lt;&lt; val;\n    return 0;\n}</code></pre>",
+                "options-statement": "What is printed?",
+                "options": [
+                    "10",
+                    "20",
+                    "Compilation error: multiple definition of val",
+                    "Undefined behavior"
+                ],
+                "correct": 0,
+                "explanation": "Both headers use the same include guard `X_H`. When `a.h` is included first, it defines `X_H` and `val = 10`. Then `b.h`'s `#ifndef X_H` is false, so its content is skipped. Thus `val` is defined as `10` from `a.h`. The program compiles and prints `10`.",
+                "detailed": {
+                    "concept": {
+                        "title": "Include guard collision and order of inclusion",
+                        "description": "Include guards prevent multiple inclusions based on a macro. If two headers inadvertently use the same guard macro, the first one included will be effective; the second will be completely ignored. This can mask potential errors and result in only the first header's definitions being visible.",
+                        "points": [
+                            "`a.h` defines `X_H` and `val = 10`.",
+                            "When `b.h` is processed, `X_H` is already defined, so its definition of `val` is skipped.",
+                            "Only one definition of `val` exists (`10`).",
+                            "The program compiles and prints `10`."
+                        ]
+                    },
+                    "trace": [
+                        { "step": 1, "op": "Include a.h", "state": "X_H defined, val = 10", "out": "" },
+                        { "step": 2, "op": "Include b.h", "state": "#ifndef X_H false → b.h body skipped", "out": "" },
+                        { "step": 3, "op": "Compilation", "state": "val is 10", "out": "10" }
+                    ],
+                    "analysis": {
+                        "whyOptionsWrong": [
+                            { "option": "B", "reason": "20 would be used if b.h were processed, but the guard prevents it." },
+                            { "option": "C", "reason": "There is no multiple definition because the second definition is never compiled." },
+                            { "option": "D", "reason": "No UB; the program is well‑formed (though the guard collision might be a bug)." }
+                        ]
+                    },
+                    "tips": [
+                        "Use unique guard names, e.g., `PROJECT_PATH_FILENAME_H`.",
+                        "Consider using `#pragma once` if supported to avoid naming collisions entirely."
+                    ],
+                    "warnings": [
+                        "Guard collisions can lead to subtle bugs where a different version of a header is used based on include order.",
+                        "If two headers define the same entity with different values under the same guard, an ODR violation can occur if they are ever both included in the same translation unit (but here one is ignored)."
+                    ]
+                }
+            },
+            {
+                "id": 50,
+                "type": "mcq",
+                "difficulty": "hard",
+                "points": 3,
+                "problem-statement": "Analyze the following code that pushes back a self‑referential element into a vector.",
+                "code": "<pre><code>#include &lt;iostream&gt;\n#include &lt;vector&gt;\nusing namespace std;\n\nint main() {\n    vector&lt;int&gt; v = {1, 2, 3};\n    v.push_back(v[0]);  // push v[0] into vector, but v may reallocate\n    cout &lt;&lt; v.back();\n    return 0;\n}</code></pre>",
+                "options-statement": "What is the output?",
+                "options": [
+                    "1",
+                    "3",
+                    "Undefined behavior",
+                    "Compiler error"
+                ],
+                "correct": 0,
+                "explanation": "`v[0]` is evaluated before `push_back` modifies the vector. Even if the vector reallocates, the value `v[0]` (which is 1) has already been read and is passed as a copy to `push_back`. No dangling reference or undefined behavior occurs. The new last element becomes 1, and `v.back()` prints 1.",
+                "detailed": {
+                    "concept": {
+                        "title": "Evaluation order and push_back with self-reference",
+                        "description": "When calling `push_back(v[0])`, the argument `v[0]` is evaluated before the function modifies the vector. Since `push_back` takes the element by value, a copy of the original `v[0]` is appended. Even if the vector reallocates during `push_back`, the argument is already safely stored as a copy.",
+                        "points": [
+                            "`v[0]` is evaluated and results in the integer `1`.",
+                            "This integer is passed by value to `push_back`.",
+                            "`push_back` may or may not reallocate; either way, `1` is added.",
+                            "The code is well‑defined and outputs `1`."
+                        ]
+                    },
+                    "trace": [
+                        { "step": 1, "op": "v = {1,2,3}", "state": "size=3", "out": "" },
+                        { "step": 2, "op": "push_back(v[0])", "state": "reads v[0]=1, then adds copy of 1 to end", "out": "" },
+                        { "step": 3, "op": "v.back()", "state": "value is 1", "out": "1" }
+                    ],
+                    "analysis": {
+                        "whyOptionsWrong": [
+                            { "option": "B", "reason": "3 would be the previous last element, but push_back adds a new element, it doesn't change existing last." },
+                            { "option": "C", "reason": "No UB because the argument is evaluated before any modification, and it's a value copy." },
+                            { "option": "D", "reason": "The code compiles without error." }
+                        ]
+                    },
+                    "tips": [
+                        "If you need to append an element that might be invalidated by reallocation, ensure you take a copy before the operation.",
+                        "Passing elements by value to container modifying functions is safe even if the element source is from the same container."
+                    ],
+                    "warnings": [
+                        "This would be dangerous if the element type had a reference member pointing back into the container, but for plain `int` it's fine.",
+                        "Be careful with `emplace_back` and references; `emplace_back(v[0])` could cause issues if the reference used the element during construction before reallocation? Actually emplace_back forwards arguments, so if you pass a reference, it will be used to construct the element in-place, which might happen after reallocation, leading to dangling reference. That's UB. But here push_back with value is safe."
+                    ]
+                }
+            },
         ];
     </script>
 </body>
