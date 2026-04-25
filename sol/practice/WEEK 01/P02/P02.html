@@ -11,28 +11,20 @@
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
         onload="renderMathInElement(document.body,{delimiters:[{left:'\\(',right:'\\)',display:false},{left:'\\[',right:'\\]',display:true}]});">
         </script>
-    <link rel="stylesheet" href="../../../scr/ui/ui.css" />
-    <script src="../../../scr/ui/ui.js"></script>
+    <link rel="stylesheet" href="../../../../scr/ui/ui.css" />
+    <script src="../../../../scr/ui/ui.js"></script>
 </head>
 
 <body>
     <div class="navigation-controls">
         <button class="nav-btn nav-prev" id="nav-prev" disabled="">Previous</button>
-        <span class="question-counter">Question <span id="current-q">1</span> of <span id="total-q">20</span></span>
+        <span class="question-counter">Question <span id="current-q">1</span> of <span id="total-q">1</span></span>
         <button class="nav-btn nav-next" id="nav-next">Next</button>
     </div>
-    <div class="assignment-container">
-        <div class="gcb-assessment-title"></div>
-        <div>
-            <div id="questions-container"></div>
-        </div>
+    <div>
+        <!-- Add a json attribute containing the path to your json file -->
+        <div id="questions-container" json="P02.json"></div>
     </div>
-
-    <script>
-        window.questionsData = [
-
-        ];
-    </script>
 </body>
 
 </html>

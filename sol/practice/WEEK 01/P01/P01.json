@@ -1,0 +1,215 @@
+[
+    {
+        "id": 1,
+        "type": "mcq",
+        "difficulty": "hard",
+        "points": 3,
+        "problem-statement": "Consider the following code that uses std::lexicographical_compare with a broken comparator.",
+        "code": {
+            "prefix": "cpp",
+            "body": [
+                "#include <iostream>",
+                "#include <algorithm>",
+                "#include <cstring>",
+                "#include <cctype>",
+                "using namespace std;",
+                "",
+                "bool comp(char a, char b) {",
+                " return tolower(static_cast<unsigned char>(a)) <= tolower(static_cast<unsigned char>(b));",
+                "}",
+                "",
+                "int main() {",
+                " char s1[] = \"ABC\", s2[] = \"abc\";",
+                " cout << lexicographical_compare(s1, s1+3, s2, s2+3, comp);",
+                " return 0;",
+                "}"
+            ]
+        },
+        "options-statement": "What is the exact output?",
+        "options": [
+            "1",
+            "0",
+            "Undefined behavior / unspecified",
+            "Compilation error"
+        ],
+        "correct": 2,
+        "explanation": "The comparator is invalid for standard ordering-based algorithms because it uses <= instead of <. That makes comp(x, x) true, which violates strict weak ordering. For lexicographical_compare, passing a non-strict comparator breaks the required contract and the program has undefined behavior.",
+        "detailed": {
+            "concept": {
+                "title": "Strict Weak Ordering Requirement for STL Comparison Algorithms",
+                "description": "Many standard algorithms, including lexicographical_compare, require a comparator that behaves like a strict less-than relation. Key properties are irreflexive (comp(x, x) is false), asymmetric, and transitive. Using <= violates irreflexivity immediately.",
+                "points": [
+                    "Comparator contract is part of algorithm preconditions, not a suggestion.",
+                    "A comparator that returns true for equal values invalidates core assumptions used internally by comparison logic.",
+                    "Undefined behavior means any result is possible: 0, 1, inconsistent outcomes, or optimizer-dependent behavior."
+                ],
+                "prerequisites": [
+                    "Understand boolean predicates as binary relations.",
+                    "Know difference between strict comparison (<) and non-strict comparison (<=).",
+                    "Know that undefined behavior invalidates output guarantees."
+                ],
+                "invariants-required-by-algorithm": [
+                    "For all x: comp(x, x) must be false.",
+                    "If comp(a, b) is true, comp(b, a) must be false.",
+                    "If comp(a, b) and comp(b, c), then comp(a, c) should be true."
+                ],
+                "why-this-code-breaks-the-contract": [
+                    "When characters compare equal ignoring case, comp(a, b) returns true because of <=.",
+                    "This means comp(x, x) can be true after normalization, breaking irreflexivity.",
+                    "Once preconditions are violated, standard library behavior is not guaranteed."
+                ]
+            },
+            "line-by-line-explanation": [
+                {
+                    "line": 1,
+                    "code": "#include <iostream>",
+                    "purpose": "Provides cout for output."
+                },
+                {
+                    "line": 2,
+                    "code": "#include <algorithm>",
+                    "purpose": "Declares std::lexicographical_compare."
+                },
+                {
+                    "line": 3,
+                    "code": "#include <cstring>",
+                    "purpose": "Not needed for this exact code path, but harmless."
+                },
+                {
+                    "line": 4,
+                    "code": "#include <cctype>",
+                    "purpose": "Declares std::tolower."
+                },
+                {
+                    "line": 7,
+                    "code": "bool comp(char a, char b) { return tolower(...) <= tolower(...); }",
+                    "purpose": "Defines custom comparison predicate.",
+                    "risk": "Uses <=, not <, violating strict weak ordering."
+                },
+                {
+                    "line": 12,
+                    "code": "char s1[] = \"ABC\", s2[] = \"abc\";",
+                    "purpose": "Creates same letters with different case."
+                },
+                {
+                    "line": 13,
+                    "code": "lexicographical_compare(s1, s1+3, s2, s2+3, comp)",
+                    "purpose": "Compares first 3 chars in both arrays using comp.",
+                    "risk": "Algorithm assumes valid comparator contract."
+                }
+            ],
+            "trace": [
+                {
+                    "step": 1,
+                    "op": "Compare first elements using comp('A', 'a')",
+                    "state": "tolower('A') == 'a' and tolower('a') == 'a', so expression is 'a' <= 'a' which is true",
+                    "out": "Comparator claims first is strictly less, even though normalized values are equal"
+                },
+                {
+                    "step": 2,
+                    "op": "Algorithm logic proceeds with invalid relation",
+                    "state": "Precondition violated due to non-strict predicate",
+                    "out": "No standards-guaranteed result"
+                }
+            ],
+            "analysis": {
+                "why-correct-option-is-c": "Option C is correct because behavior is undefined once comparator contract is broken.",
+                "whyOptionsWrong": [
+                    {
+                        "option": "A",
+                        "reason": "Output 1 can happen on some builds, but is not guaranteed by the standard."
+                    },
+                    {
+                        "option": "B",
+                        "reason": "Output 0 can also happen, but is equally non-guaranteed."
+                    },
+                    {
+                        "option": "D",
+                        "reason": "Code is syntactically valid and compiles; the issue is semantic contract violation."
+                    }
+                ],
+                "exam-trap-signals": [
+                    "Comparator uses <= or >= in STL algorithm context.",
+                    "Question asks for exact output but contract is broken.",
+                    "Inputs seem benign and equal after normalization, tempting deterministic reasoning."
+                ]
+            },
+            "deep-diagnostics": {
+                "standard-contract-checklist": [
+                    "Check comp(x, x): must be false. Here it can be true.",
+                    "Check antisymmetry-like behavior: if comp(a, b) then not comp(b, a). Violated for equal normalized chars.",
+                    "Check transitivity under transformed domain (tolower values). Cannot be trusted once irreflexivity fails."
+                ],
+                "undefined-behavior-consequences": [
+                    "Different optimization levels may produce different outputs.",
+                    "Different standard library implementations may diverge.",
+                    "Small input tests can appear stable and still be non-portable."
+                ],
+                "debugging-playbook": [
+                    "Add runtime assertions for comparator sanity on representative values.",
+                    "Test comp(x, x) over sample domain and assert false.",
+                    "Use sanitizer-enabled builds plus differential testing across compilers.",
+                    "Reduce to minimal reproducer and replace comparator with strict version to confirm root cause."
+                ]
+            },
+            "fix-and-verify": {
+                "corrected-comparator": {
+                    "prefix": "cpp",
+                    "body": [
+                        "bool comp(char a, char b) {",
+                        " return tolower(static_cast<unsigned char>(a)) < tolower(static_cast<unsigned char>(b));",
+                        "}"
+                    ]
+                },
+                "expected-behavior-after-fix": [
+                    "ABC and abc are equal under case-insensitive strict comparison.",
+                    "lexicographical_compare returns false.",
+                    "cout prints 0."
+                ],
+                "verification-tests": [
+                    {
+                        "name": "equal ignoring case",
+                        "input": "ABC vs abc",
+                        "expected": "0"
+                    },
+                    {
+                        "name": "strictly smaller first sequence",
+                        "input": "ABC vs abd",
+                        "expected": "1"
+                    },
+                    {
+                        "name": "strictly larger first sequence",
+                        "input": "abz vs ABY",
+                        "expected": "0"
+                    },
+                    {
+                        "name": "prefix case",
+                        "input": "ab vs ABC",
+                        "expected": "1"
+                    }
+                ],
+                "engineering-note": "When using ctype functions, cast char to unsigned char before tolower to avoid undefined behavior for negative signed char values."
+            },
+            "common-mistakes": [
+                "Using <= in comparator by habit from math notation.",
+                "Assuming comparator only needs to work on provided sample input.",
+                "Ignoring comparator preconditions because code compiles."
+            ],
+            "interview-and-exam-extension-questions": [
+                "Why does strict weak ordering matter for algorithm correctness proofs?",
+                "How does undefined behavior differ from unspecified behavior and implementation-defined behavior?",
+                "What additional bug can occur if tolower is called on negative signed char without cast?"
+            ],
+            "tips": [
+                "For ordering comparators, default mental rule is: use strict relation only.",
+                "Quick comparator self-test: verify comp(x, x) is always false.",
+                "Prefer reusable comparator helpers and unit tests for relation properties."
+            ],
+            "warnings": [
+                "A one-character comparator bug can silently invalidate entire algorithm behavior.",
+                "Do not trust seemingly stable output under undefined behavior."
+            ],
+            "solution-summary-for-engineers": "Root cause is a violated algorithm contract, not syntax or library failure. Replace <= with < in comparator, cast to unsigned char before tolower, and validate comparator laws with targeted tests."
+        }
+    }
+]
