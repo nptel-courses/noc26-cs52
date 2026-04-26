@@ -211,5 +211,1063 @@
             ],
             "solution-summary-for-engineers": "Root cause is a violated algorithm contract, not syntax or library failure. Replace <= with < in comparator, cast to unsigned char before tolower, and validate comparator laws with targeted tests."
         }
+    },
+    {
+        "id": 2,
+        "type": "mcq",
+        "difficulty": "hard",
+        "points": 3,
+        "problem-statement": "Consider the following code that sorts an array using std::sort with a custom comparator that returns true for equal elements.",
+        "code": {
+            "prefix": "cpp",
+            "body": [
+                "#include <iostream>",
+                "#include <algorithm>",
+                "using namespace std;",
+                "",
+                "bool comp(int a, int b) {",
+                "  return a <= b;",
+                "}",
+                "",
+                "int main() {",
+                "  int arr[] = {3, 1, 4, 1, 5, 9, 2, 6, 5, 3};",
+                "  sort(arr, arr + 10, comp);",
+                "  for(int x : arr) cout << x << ' ';",
+                "  return 0;",
+                "}"
+            ]
+        },
+        "options-statement": "What is the guaranteed behavior of this program?",
+        "options": [
+            "The array is sorted in non-decreasing order and prints 1 1 2 3 3 4 5 5 6 9.",
+            "The program prints some permutation of the original array, but not necessarily sorted.",
+            "Undefined behavior: the comparator violates strict weak ordering, so any output or crash is possible.",
+            "Compilation error: sort cannot accept a lambda or function that returns true for equal values."
+        ],
+        "correct": 2,
+        "explanation": "The comparator comp uses <=. For strict weak ordering required by std::sort, comp(a, a) must be false. Here comp(1, 1) is true (1 <= 1), which violates irreflexivity. Passing an invalid comparator to std::sort leads to undefined behavior. The program may crash, produce garbage, or appear to work on some runs but is not portable or reliable.",
+        "detailed": {
+            "concept": {
+                "title": "Strict Weak Ordering in std::sort",
+                "description": "std::sort requires a comparator that defines a strict weak ordering: it must be irreflexive (comp(x, x) == false), antisymmetric (if comp(a, b) then !comp(b, a)), and transitive. A comparator using <= fails irreflexivity, thus breaking the contract.",
+                "points": [
+                    "The comparator is invoked by sort internally and must satisfy the Compare requirements.",
+                    "Violating the requirements results in undefined behavior, not a compile-time error.",
+                    "Even if the output looks correct on a specific machine, the program is incorrect."
+                ],
+                "prerequisites": [
+                    "Understanding of strict weak ordering vs. non-strict total orders.",
+                    "Knowledge of standard algorithm contracts.",
+                    "Awareness of undefined behavior in C++."
+                ],
+                "invariants-required-by-algorithm": [
+                    "comp(x, x) == false for all x.",
+                    "If comp(a, b) == true, then comp(b, a) == false.",
+                    "If comp(a, b) && comp(b, c), then comp(a, c).",
+                    "If !comp(a, b) && !comp(b, a), then a and b are equivalent."
+                ],
+                "why-this-code-breaks-the-contract": [
+                    "comp(x, x) returns x <= x, which is always true, so irreflexivity is broken.",
+                    "The algorithm may misbehave when encountering equal values, leading to infinite loops, crashes, or wrong order.",
+                    "Standard library implementations often assume strict ordering and use operations like std::partition that rely on !comp(b, a) implying a <= b."
+                ]
+            },
+            "line-by-line-explanation": [
+                {
+                    "line": 4,
+                    "code": "bool comp(int a, int b) { return a <= b; }",
+                    "purpose": "Custom comparator for sorting.",
+                    "risk": "Returns true for equal elements, breaking strict weak ordering."
+                },
+                {
+                    "line": 9,
+                    "code": "sort(arr, arr + 10, comp);",
+                    "purpose": "Sort the array using the invalid comparator.",
+                    "risk": "Undefined behavior due to violated preconditions."
+                }
+            ],
+            "trace": [
+                {
+                    "step": 1,
+                    "op": "Sort algorithm begins partitioning",
+                    "state": "Comparator is called multiple times; for equal elements, comp returns true.",
+                    "out": "Internal state may become inconsistent; the algorithm may not terminate or produce wrong results."
+                }
+            ],
+            "analysis": {
+                "why-correct-option-is-c": "The correct option states undefined behavior because the comparator violates strict weak ordering, which is a requirement for std::sort.",
+                "whyOptionsWrong": [
+                    {
+                        "option": "A",
+                        "reason": "Even if the output sometimes appears sorted, the standard does not guarantee it; the behavior is undefined."
+                    },
+                    {
+                        "option": "B",
+                        "reason": "The program might produce a permutation, but may also crash or produce duplicate values; no predictable outcome."
+                    },
+                    {
+                        "option": "D",
+                        "reason": "There is no compilation error; the comp function is syntactically valid."
+                    }
+                ],
+                "exam-trap-signals": [
+                    "Comparator uses <= or >= instead of <.",
+                    "Question asks for \"guaranteed behavior\" to trick into thinking it's defined.",
+                    "Presence of duplicate elements highlights the irreflexivity issue."
+                ]
+            },
+            "deep-diagnostics": {
+                "standard-contract-checklist": [
+                    "Check irreflexivity: comp(x, x) must be false. This code fails.",
+                    "Check asymmetry: if comp(a,b) then !comp(b,a). For equal elements, comp(a,b) and comp(b,a) both true, violating this.",
+                    "Transitivity also cannot be guaranteed."
+                ],
+                "undefined-behavior-consequences": [
+                    "May crash with segmentation fault in some library implementations that use an internal assert.",
+                    "May produce garbage values or modify elements incorrectly.",
+                    "Behavior can change with compiler optimizations or STL version."
+                ],
+                "debugging-playbook": [
+                    "Add runtime assertion: assert(!comp(x, x)) for sample x.",
+                    "Test with small input pairs to verify strictness.",
+                    "Use sanitizers (e.g., -fsanitize=undefined) to catch violations.",
+                    "Replace <= with < and ensure correctness."
+                ]
+            },
+            "fix-and-verify": {
+                "corrected-comparator": {
+                    "prefix": "cpp",
+                    "body": [
+                        "bool comp(int a, int b) {",
+                        "  return a < b;",
+                        "}"
+                    ]
+                },
+                "expected-behavior-after-fix": [
+                    "The array is sorted in non-decreasing order.",
+                    "Output: 1 1 2 3 3 4 5 5 6 9"
+                ],
+                "verification-tests": [
+                    {
+                        "name": "sorted output",
+                        "input": "arr = {3,1,4,1,5,9,2,6,5,3}",
+                        "expected": "1 1 2 3 3 4 5 5 6 9"
+                    },
+                    {
+                        "name": "irreflexivity check",
+                        "input": "comp(1,1)",
+                        "expected": "false"
+                    }
+                ],
+                "engineering-note": "Always use < or > for strict comparators. For equal elements, return false."
+            },
+            "common-mistakes": [
+                "Thinking 'sort will just put elements in some order' without checking comparator requirements.",
+                "Using <= because 'I want stable behavior for equal keys' – use stable_sort with strict comparator instead.",
+                "Ignoring undefined behavior because code works on first run."
+            ],
+            "interview-and-exam-extension-questions": [
+                "How would you implement a comparator for sorting in descending order while satisfying strict weak ordering?",
+                "What is the difference between strict weak ordering and total ordering?",
+                "Why can't std::sort use a less-than-or-equal comparator for performance reasons?"
+            ],
+            "tips": [
+                "Always test comparator with identical arguments to ensure it returns false.",
+                "Use 'return a < b;' for ascending, 'b < a' for descending.",
+                "Prefer using lambda functions to keep comparator logic close."
+            ],
+            "warnings": [
+                "A broken comparator can cause heap corruption or infinite loops.",
+                "Don't rely on output being 'close to sorted' – it's unpredictable."
+            ],
+            "solution-summary-for-engineers": "Root cause: comparator violates strict weak ordering via <=. Fix: use '<' only. Always verify comparator properties with unit tests."
+        }
+    },
+    {
+        "id": 3,
+        "type": "mcq",
+        "difficulty": "hard",
+        "points": 3,
+        "problem-statement": "Consider the following code using std::rotate on a vector, where the middle iterator is beyond the last iterator.",
+        "code": {
+            "prefix": "cpp",
+            "body": [
+                "#include <iostream>",
+                "#include <vector>",
+                "#include <algorithm>",
+                "using namespace std;",
+                "",
+                "int main() {",
+                "  vector<int> v = {10, 20, 30, 40, 50};",
+                "  rotate(v.begin(), v.begin() + 6, v.end());",
+                "  for (int x : v) cout << x << ' ';",
+                "  return 0;",
+                "}"
+            ]
+        },
+        "options-statement": "What is the exact behavior of this program?",
+        "options": [
+            "Prints 40 50 10 20 30.",
+            "Prints 10 20 30 40 50 (no change).",
+            "Undefined behavior because middle iterator is out of the valid range.",
+            "Compilation error: v.begin() + 6 is not a valid expression."
+        ],
+        "correct": 2,
+        "explanation": "The call `rotate(v.begin(), v.begin() + 6, v.end())` uses middle = v.begin() + 6. Since the vector has only 5 elements, v.begin() + 6 points beyond the end of the allocated storage (it is not even a past-the-end iterator; it is an invalid iterator). For the range [v.begin(), v.end()), any iterator outside [first, last] used as middle leads to undefined behavior. The standard requires that middle is in the inclusive range [first, last] and that [first, middle) and [middle, last) are valid ranges. Since v.begin() + 6 does not satisfy this, the program exhibits undefined behavior.",
+        "detailed": {
+            "concept": {
+                "title": "rotate() preconditions: middle must be in [first, last]",
+                "description": "std::rotate(first, middle, last) requires that middle is in the inclusive range [first, last]. If middle is outside, the behavior is undefined. Even if middle equals last (which is defined as no rotation), middle must be reachable from first. Here v.begin() + 6 is not reachable within the valid iterator range of the container.",
+                "points": [
+                    "The range of valid iterators for a vector is [begin(), end()].",
+                    "Computing an iterator beyond end() is not allowed; it is undefined even before the call.",
+                    "rotate does not check its arguments; it trusts the caller to follow the contract."
+                ],
+                "prerequisites": [
+                    "Understand iterator validity in C++ containers.",
+                    "Know that pointer arithmetic out-of-bounds is UB.",
+                    "Know that standard algorithms require proper iterator ranges."
+                ],
+                "invariants-required-by-algorithm": [
+                    "first, middle, last must be valid iterators into the same container.",
+                    "middle must be in [first, last].",
+                    "[first, middle) and [middle, last) must be valid ranges."
+                ],
+                "why-this-code-breaks-the-contract": [
+                    "v.begin() + 6 points at least one past the end of the container's storage.",
+                    "Even the computation v.begin() + 6 itself is undefined behavior for a vector of size 5 (it may be undefined to form a pointer beyond one-past-the-end).",
+                    "The function rotate receives an invalid iterator, violating its preconditions."
+                ]
+            },
+            "line-by-line-explanation": [
+                {
+                    "line": 7,
+                    "code": "rotate(v.begin(), v.begin() + 6, v.end());",
+                    "purpose": "Intended to rotate left by 6? Actually rotate(first, middle, last) rotates so that middle becomes the new first.",
+                    "risk": "v.begin() + 6 is an invalid iterator, causing undefined behavior."
+                }
+            ],
+            "trace": [
+                {
+                    "step": 1,
+                    "op": "Compute v.begin() + 6",
+                    "state": "Only 5 elements, so adding 6 goes beyond the valid pointer range; might not crash but is UB.",
+                    "out": "If execution reaches rotate, the algorithm may access out-of-bounds memory or corrupt the vector."
+                }
+            ],
+            "analysis": {
+                "why-correct-option-is-c": "The correct answer is undefined behavior because middle is outside the valid range. No guarantee of output.",
+                "whyOptionsWrong": [
+                    {
+                        "option": "A",
+                        "reason": "Even if a naive implementation might appear to do a circular shift, the standard does not specify this behavior for invalid iterators."
+                    },
+                    {
+                        "option": "B",
+                        "reason": "The call will not be a no-op; undefined behavior may still produce something else."
+                    },
+                    {
+                        "option": "D",
+                        "reason": "The expression v.begin() + 6 is syntactically allowed (pointer arithmetic on vector iterators is often just pointer arithmetic), but it leads to UB, not a compile-time error."
+                    }
+                ],
+                "exam-trap-signals": [
+                    "Appearance of a rotation by a large offset; tempting to think the shift wraps around.",
+                    "Iterator arithmetic that exceeds the size but is still within capacity? No, size=5, so v.begin()+6 is illegal.",
+                    "Question asks 'exact behavior' to trick into thinking it's deterministic."
+                ]
+            },
+            "deep-diagnostics": {
+                "standard-contract-checklist": [
+                    "Check that middle is in [first, last]: first <= middle <= last.",
+                    "middle must be dereferenceable? Actually if middle == last, it's ok (empty trailing range). But middle cannot be > last.",
+                    "Here middle > last (since last = v.end(), v.begin()+6 > v.end())."
+                ],
+                "undefined-behavior-consequences": [
+                    "May crash with segmentation fault.",
+                    "May corrupt heap or stack.",
+                    "May appear to work if v.begin()+6 happens to be within allocated memory (like if capacity > size), but still UB."
+                ],
+                "debugging-playbook": [
+                    "Use debug iterators (e.g., -D_GLIBCXX_DEBUG) to detect out-of-bounds.",
+                    "Validate iterator ranges with assertions: assert(middle >= first && middle <= last).",
+                    "Test with various container sizes and optimizer levels."
+                ]
+            },
+            "fix-and-verify": {
+                "corrected-rotate": {
+                    "prefix": "cpp",
+                    "body": [
+                        "// If intention was to rotate by 1 (middle = v.begin()+1):",
+                        "rotate(v.begin(), v.begin() + 1, v.end());"
+                    ]
+                },
+                "expected-behavior-after-fix": [
+                    "Prints 20 30 40 50 10."
+                ],
+                "verification-tests": [
+                    {
+                        "name": "rotate by valid middle",
+                        "input": "v={10,20,30,40,50}",
+                        "expected": "20 30 40 50 10"
+                    }
+                ],
+                "engineering-note": "Always ensure that the middle iterator lies within [first, last]."
+            },
+            "common-mistakes": [
+                "Assuming that rotate wraps indices automatically (like modular arithmetic).",
+                "Using begin()+n where n > size() as middle, thinking it's equivalent to n % size().",
+                "Overlooking that even computing an out-of-bounds pointer is UB."
+            ],
+            "interview-and-exam-extension-questions": [
+                "What is the difference between v.begin() + size() and v.end()?",
+                "Is it valid to use v.begin() + size() as middle in rotate?",
+                "How would you safely implement a rotation by a large offset?"
+            ],
+            "tips": [
+                "To rotate by k positions, use middle = v.begin() + (k % v.size()) and ensure 0 <= k < size.",
+                "Use std::rotate only after verifying that the iterator arithmetic is valid.",
+                "Enable STL debug mode during testing."
+            ],
+            "warnings": [
+                "Even a small off-by-one in rotate's middle can lead to corruption.",
+                "Don't rely on the return value of rotate if the arguments are invalid."
+            ],
+            "solution-summary-for-engineers": "Root cause: middle iterator is out-of-bounds. Fix: constrain k to the range [0, size()] when computing middle. Always check iterator validity."
+        }
+    },
+    {
+        "id": 4,
+        "type": "mcq",
+        "difficulty": "hard",
+        "points": 3,
+        "problem-statement": "Consider the following code snippet. The programmer intends to check whether the integer `2` exists in the array using `std::binary_search`. However, a fundamental precondition of the algorithm is violated.",
+        "code": {
+            "prefix": "cpp",
+            "body": [
+                "#include <iostream>",
+                "#include <algorithm>",
+                "using namespace std;",
+                "int main() {",
+                "    int arr[] = {3, 1, 2}; // unsorted",
+                "    int key = 2;",
+                "    if (binary_search(arr, arr + 3, key))",
+                "        cout << \"found\";",
+                "    else",
+                "        cout << \"not found\";",
+                "    return 0;",
+                "}"
+            ]
+        },
+        "options-statement": "What is the most accurate description of the program's behavior?",
+        "options": [
+            "Prints \"found\"",
+            "Prints \"not found\"",
+            "Compilation error",
+            "Undefined behaviour (can output anything, crash, or produce inconsistent results)"
+        ],
+        "correct": 3,
+        "explanation": "`std::binary_search` requires the input range to be sorted (or partitioned with respect to the searched value) according to the comparison operator used. The array `{3,1,2}` is not sorted; therefore the precondition is violated, leading to undefined behaviour. The output may vary across different runs or compilers and cannot be relied upon.",
+        "detailed": {
+            "concept": {
+                "title": "Binary Search Precondition: Sorted Range",
+                "description": "The C++ Standard Library function `std::binary_search` expects that the range `[first, last)` is a valid sorted range with respect to `operator<` (or the supplied comparator). If the range is not sorted, the algorithm's behavior is undefined.",
+                "points": [
+                    "`binary_search(first, last, value)` requires that the sequence is sorted in non-decreasing order.",
+                    "Violation of this precondition results in undefined behaviour.",
+                    "The algorithm internally uses `std::lower_bound`, which also requires a sorted range.",
+                    "No diagnostic is required from implementations; the program may appear to work but produce incorrect results unpredictably."
+                ],
+                "prerequisites": [
+                    "Understanding of algorithm preconditions in the C++ standard library.",
+                    "Knowledge that `binary_search` does not sort the input; it assumes it is sorted."
+                ],
+                "invariants-required-by-algorithm": [
+                    "For all `i` in `[first, last)`, `*(i) < *(i+1)` must be false (i.e., the range is non-decreasing).",
+                    "Equivalently, the range must be partitioned with respect to `value` if a custom comparator is used."
+                ],
+                "why-this-code-breaks-the-contract": [
+                    "The array `{3, 1, 2}` is not sorted.",
+                    "Calling `binary_search` on an unsorted range violates the precondition, leading to undefined behaviour."
+                ]
+            },
+            "line-by-line-explanation": [
+                {
+                    "line": 5,
+                    "code": "int arr[] = {3, 1, 2};",
+                    "purpose": "Declares an unsorted array of three integers.",
+                    "risk": "The unsorted state directly violates the binary_search requirement."
+                },
+                {
+                    "line": 7,
+                    "code": "if (binary_search(arr, arr + 3, key))",
+                    "purpose": "Calls binary_search on the unsorted range.",
+                    "risk": "Undefined behaviour because the range is not sorted."
+                }
+            ],
+            "trace": [
+                {
+                    "step": 1,
+                    "op": "Array initialized",
+                    "state": "arr = [3, 1, 2] (unsorted)",
+                    "out": ""
+                },
+                {
+                    "step": 2,
+                    "op": "binary_search invoked",
+                    "state": "Precondition violated",
+                    "out": "Undefined behaviour (no guaranteed output)"
+                }
+            ],
+            "analysis": {
+                "why-correct-option-is-d": "The C++ standard states that if the sequence is not sorted, the effect of `binary_search` is undefined. Therefore, any observed output (found/not found/crash) is possible; the program is not constrained to any specific behavior.",
+                "whyOptionsWrong": [
+                    {
+                        "option": "A",
+                        "reason": "While the element 2 is physically present, the algorithm may fail to find it because the internal search relies on ordering, and the outcome is undefined; it is not guaranteed to print \"found\"."
+                    },
+                    {
+                        "option": "B",
+                        "reason": "Similarly, output \"not found\" is not guaranteed; undefined behaviour means no particular output can be assumed."
+                    },
+                    {
+                        "option": "C",
+                        "reason": "There is no compilation error; the code is syntactically correct and the function call is well‑formed."
+                    }
+                ],
+                "exam-trap-signals": [
+                    "Unsorted array hides in plain sight – students may glance at the presence of the value and assume the algorithm will locate it.",
+                    "No compiler diagnostic; the program may appear to work correctly on some systems, masking the UB.",
+                    "Distinction between \"logically wrong answer\" and \"undefined behaviour\" is crucial."
+                ]
+            },
+            "deep-diagnostics": {
+                "standard-contract-checklist": [
+                    "Is the range sorted before the call? – No.",
+                    "Does the algorithm sort its input? – No.",
+                    "Is the behavior defined if the range is unsorted? – No (undefined)."
+                ],
+                "undefined-behavior-consequences": [
+                    "May produce \"found\" incorrectly or \"not found\" incorrectly.",
+                    "May cause an out‑of‑bounds memory access or segmentation fault.",
+                    "May exhibit different behavior with different compilers or optimization levels.",
+                    "In a slightly different form, it could lead to silent logic errors that are hard to trace."
+                ],
+                "debugging-playbook": [
+                    "Verify the input array is sorted before passing to binary_search.",
+                    "Use assertions or debug outputs to check the sorted property.",
+                    "Consider using `std::sort` if the range may not be sorted.",
+                    "Test with random unsorted data to reveal instability."
+                ]
+            },
+            "fix-and-verify": {
+                "corrected-comparator": {
+                    "prefix": "cpp",
+                    "body": []
+                },
+                "expected-behavior-after-fix": [
+                    "If the array is sorted first (e.g., using `std::sort(arr, arr+3)` before `binary_search`), the program will reliably print \"found\" because 2 is present."
+                ],
+                "verification-tests": [
+                    {
+                        "name": "Sorted array containing the key",
+                        "input": "{1,2,3} search for 2",
+                        "expected": "found"
+                    },
+                    {
+                        "name": "Sorted array without the key",
+                        "input": "{1,3,5} search for 2",
+                        "expected": "not found"
+                    }
+                ],
+                "engineering-note": "Always ensure the range is sorted before using binary search. If data arrives unsorted, sort it first. Alternatively, if searching an unsorted container, use `std::find`."
+            },
+            "common-mistakes": [
+                "Assuming `binary_search` will sort the arguments automatically.",
+                "Calling `binary_search` on a container that is not guaranteed to be sorted (e.g., input from user).",
+                "Confusing presence of an element with guaranteed find‑ability in an unsorted context."
+            ],
+            "interview-and-exam-extension-questions": [
+                "What is the complexity guarantee of `binary_search` and why does it require a sorted range?",
+                "If you cannot modify the container, how would you safely search for an element?",
+                "What is the difference between `binary_search` and `std::lower_bound`?",
+                "How would you use `binary_search` with a custom comparator that defines a different ordering?"
+            ],
+            "tips": [
+                "Always check algorithm preconditions in the C++ reference before using them.",
+                "Use `std::sort` or `std::is_sorted` when in doubt.",
+                "Enable all compiler warnings (-Wall -Wextra) to catch potential misuse; though UB may not always be flagged."
+            ],
+            "warnings": [
+                "Undefined behaviour may be exploited by compilers to optimize heavily, leading to surprising results.",
+                "Never rely on the observed behavior of a program that invokes UB; it may change with any code modification, compiler upgrade, or even the phase of the moon."
+            ],
+            "solution-summary-for-engineers": "Root cause: binary_search called on unsorted array (violates precondition). Fix: sort the array first (e.g., `std::sort(arr, arr+3)`) before calling binary_search."
+        }
+    },
+    {
+        "id": 5,
+        "type": "mcq",
+        "difficulty": "hard",
+        "points": 3,
+        "problem-statement": "The following code attempts to rotate a vector so that the element originally at position 1 becomes the first element. However, a subtle mistake leads to undefined behaviour.",
+        "code": {
+            "prefix": "cpp",
+            "body": [
+                "#include <iostream>",
+                "#include <vector>",
+                "#include <algorithm>",
+                "using namespace std;",
+                "int main() {",
+                "    vector<int> v;",
+                "    v.reserve(3);              // capacity is set to 3",
+                "    v.push_back(1);",
+                "    v.push_back(2);",
+                "    v.push_back(3);",
+                "    auto mid = v.begin() + 1; // points to element 2",
+                "    v.push_back(4);           // vector grows, may reallocate",
+                "    rotate(v.begin(), mid, v.end());",
+                "    for (auto i : v) cout << i << ' ';",
+                "    return 0;",
+                "}"
+            ]
+        },
+        "options-statement": "What is the guaranteed output of this program?",
+        "options": [
+            "2 3 4 1",
+            "2 1 3 4",
+            "1 2 3 4",
+            "Undefined behaviour (no guaranteed output; may print anything or crash)"
+        ],
+        "correct": 3,
+        "explanation": "After `v.reserve(3)`, the vector’s capacity is exactly 3. When `push_back(4)` is called, the vector has no spare capacity, so it must reallocate its underlying storage. This invalidates all existing iterators, including `mid`. Passing an invalidated iterator to `std::rotate` is undefined behaviour. The program may appear to work, produce a different permutation, or crash; the standard imposes no requirements.",
+        "detailed": {
+            "concept": {
+                "title": "Iterator Invalidation on Reallocation",
+                "description": "The C++ standard specifies that certain operations on containers may invalidate iterators. For `std::vector`, `push_back` can cause reallocation if the new size exceeds the current capacity. Reallocation invalidates all iterators, references, and pointers into the sequence. Using an invalidated iterator (except for assignment or destruction) results in undefined behaviour.",
+                "points": [
+                    "`vector::push_back` may invalidate iterators if reallocation occurs.",
+                    "Reallocation happens when `size() == capacity()` before the insertion.",
+                    "Any iterator obtained before the reallocation becomes dangling after.",
+                    "Using a dangling iterator in any algorithm like `std::rotate` is undefined behaviour."
+                ],
+                "prerequisites": [
+                    "Understanding of vector memory model (capacity vs. size).",
+                    "Familiarity with iterator invalidation rules for standard containers."
+                ],
+                "invariants-required-by-algorithm": [
+                    "`std::rotate` requires valid iterators forming a range `[first, middle)` and `[middle, last)`.",
+                    "All iterators passed must be dereferenceable and not invalidated by earlier operations."
+                ],
+                "why-this-code-breaks-the-contract": [
+                    "`mid` was obtained before `push_back(4)`, which triggered a reallocation because capacity was 3.",
+                    "After reallocation, `mid` is an invalid iterator.",
+                    "`std::rotate(v.begin(), mid, v.end())` uses the invalid iterator -> undefined behaviour."
+                ]
+            },
+            "line-by-line-explanation": [
+                {
+                    "line": 6,
+                    "code": "vector<int> v;",
+                    "purpose": "Creates an empty vector."
+                },
+                {
+                    "line": 7,
+                    "code": "v.reserve(3);",
+                    "purpose": "Sets the capacity to exactly 3 (size remains 0).",
+                    "risk": "Future pushes will reallocate once size reaches 4."
+                },
+                {
+                    "line": 8,
+                    "code": "v.push_back(1); v.push_back(2); v.push_back(3);",
+                    "purpose": "Inserts three elements. Now size=3, capacity=3."
+                },
+                {
+                    "line": 9,
+                    "code": "auto mid = v.begin() + 1;",
+                    "purpose": "Stores an iterator to the second element (value 2).",
+                    "risk": "Iterator will be invalidated if the vector reallocates."
+                },
+                {
+                    "line": 10,
+                    "code": "v.push_back(4);",
+                    "purpose": "Adds a fourth element; because capacity was 3, reallocation happens.",
+                    "risk": "Invalidates all iterators, including `mid`."
+                },
+                {
+                    "line": 11,
+                    "code": "rotate(v.begin(), mid, v.end());",
+                    "purpose": "Intends to rotate so that `*mid` becomes the new first element.",
+                    "risk": "Uses an invalid iterator, leading to undefined behaviour."
+                }
+            ],
+            "trace": [
+                {
+                    "step": 1,
+                    "op": "reserve(3)",
+                    "state": "capacity=3, size=0",
+                    "out": ""
+                },
+                {
+                    "step": 2,
+                    "op": "push_back(1), (2), (3)",
+                    "state": "capacity=3, size=3, contents {1,2,3}",
+                    "out": ""
+                },
+                {
+                    "step": 3,
+                    "op": "mid = begin()+1",
+                    "state": "mid points to element '2' (valid)",
+                    "out": ""
+                },
+                {
+                    "step": 4,
+                    "op": "push_back(4)",
+                    "state": "size=4, capacity>3 (probably 6), reallocation occurs. All iterators invalidated.",
+                    "out": ""
+                },
+                {
+                    "step": 5,
+                    "op": "rotate(v.begin(), mid, v.end())",
+                    "state": "mid is invalid; UB invoked",
+                    "out": "No guaranteed output"
+                }
+            ],
+            "analysis": {
+                "why-correct-option-is-d": "The program invokes undefined behaviour because `mid` is an invalidated iterator. Thus, no specific output is guaranteed; the behaviour is unpredictable.",
+                "whyOptionsWrong": [
+                    {
+                        "option": "A",
+                        "reason": "While it might coincide with the intended rotation if no reallocation happened, the code is not guaranteed to produce this output due to UB."
+                    },
+                    {
+                        "option": "B",
+                        "reason": "This could happen on some implementations if the invalidated iterator still points to a wrong location, but it is not guaranteed. The correct answer is that the behaviour is undefined."
+                    },
+                    {
+                        "option": "C",
+                        "reason": "The program would not produce the original sequence 1 2 3 4; even if `mid` were valid it would rotate. However, due to UB, any output is possible, but option C is not the correct guarantee."
+                    }
+                ],
+                "exam-trap-signals": [
+                    "The `reserve(3)` call is the key to force reallocation; many would overlook capacity vs. size.",
+                    "The iterator `mid` is taken before the push_back – a classic iterator invalidation pitfall.",
+                    "The appearance of `rotate` may distract from the invalidation issue.",
+                    "The program may run as intended on some compilers (if capacity happened to be >3), disguising the UB."
+                ]
+            },
+            "deep-diagnostics": {
+                "standard-contract-checklist": [
+                    "Is the iterator `mid` valid when passed to `rotate`? No, it was invalidated by reallocation.",
+                    "Does `push_back` invalidate iterators if reallocation occurs? Yes, all iterators are invalidated.",
+                    "Is it undefined behaviour to use an invalid iterator in an algorithm? Yes."
+                ],
+                "undefined-behavior-consequences": [
+                    "The program might accidentally produce the intended rotation if the memory retained the old values and the invalid iterator still 'happens' to work.",
+                    "A crash (segmentation fault) is likely due to accessing freed memory.",
+                    "The output may vary between debug and release builds, or between GCC and Clang.",
+                    "Security vulnerabilities could arise if the invalid iterator accesses sensitive memory."
+                ],
+                "debugging-playbook": [
+                    "Check capacity before and after push_back; if capacity increased, iterators were invalidated.",
+                    "Avoid storing iterators across push_back calls when capacity might be insufficient.",
+                    "Use indices instead of iterators if the container may reallocate.",
+                    "Enable STL debug mode (e.g., `-D_GLIBCXX_DEBUG`) to catch invalid iterator use."
+                ]
+            },
+            "fix-and-verify": {
+                "corrected-comparator": {
+                    "prefix": "cpp",
+                    "body": []
+                },
+                "expected-behavior-after-fix": [
+                    "If `reserve(4)` is used (or no reserve and push_back never reallocates), `mid` stays valid and `rotate` yields `2 3 4 1`.",
+                    "Alternatively, compute the middle after the final push_back: `auto mid = v.begin() + 1;` (then it is valid)."
+                ],
+                "verification-tests": [
+                    {
+                        "name": "Fixed version with sufficient capacity",
+                        "input": "reserve(4); push_back 1,2,3; mid=begin()+1; push_back(4); rotate",
+                        "expected": "2 3 4 1"
+                    },
+                    {
+                        "name": "Fixed version computing mid after push_back",
+                        "input": "no reserve; push_back 1,2,3,4; mid=begin()+1; rotate",
+                        "expected": "2 3 4 1"
+                    }
+                ],
+                "engineering-note": "When using iterators with vectors that might grow, either ensure sufficient capacity beforehand or retrieve the iterator after all insertions. Prefer indices for simple positions if resizing may occur."
+            },
+            "common-mistakes": [
+                "Capturing iterators before a potentially reallocating insertion.",
+                "Assuming `push_back` never invalidates iterators if there is capacity; it does not, but only if capacity > size.",
+                "Forgetting that `reserve` sets a precise capacity, and that further pushes beyond that trigger reallocation."
+            ],
+            "interview-and-exam-extension-questions": [
+                "Under what conditions does `vector::push_back` invalidate iterators?",
+                "How can you safely keep a reference to an element after a push_back? (Answer: use index or ensure capacity)",
+                "What other containers invalidate iterators on insertion, and under what rules?",
+                "Explain the difference between `reserve` and `resize` regarding iterator validity."
+            ],
+            "tips": [
+                "Always know the current capacity before storing an iterator for later use.",
+                "If you need a stable iterator across insertions, consider `std::deque` or `std::list`, which have different invalidation rules.",
+                "When in doubt, use indices (`int mid = 1;`) and then later construct iterators from `v.begin() + mid`."
+            ],
+            "warnings": [
+                "Undefined behaviour from invalid iterators may not be caught at compile time and can survive testing on one platform.",
+                "Even if `v.push_back` does not reallocate because capacity was larger than expected, the code is still fragile; changing the initial state or compiler could break it."
+            ],
+            "solution-summary-for-engineers": "Root cause: iterator `mid` invalidated by reallocation during `push_back`. Fix: either increase capacity with `reserve(4)` before the first push_back, or obtain `mid` after all insertions."
+        }
+    },
+    {
+        "id": 4,
+        "type": "mcq",
+        "difficulty": "hard",
+        "points": 3,
+        "problem-statement": "The programmer wants to rotate the subrange consisting of the first two elements so that the element originally at position 1 becomes the first element of that subrange. However, the arguments to `std::rotate` are incorrectly ordered, leading to undefined behaviour.",
+        "code": {
+            "prefix": "cpp",
+            "body": [
+                "#include <iostream>",
+                "#include <vector>",
+                "#include <algorithm>",
+                "using namespace std;",
+                "int main() {",
+                "    vector<int> v = {1, 2, 3, 4, 5};",
+                "    // Attempt to rotate subrange [v[0], v[1]] so that v[1] comes first",
+                "    rotate(v.begin(), v.begin() + 1, v.begin() + 0);",
+                "    for (auto i : v) cout << i << ' ';",
+                "    return 0;",
+                "}"
+            ]
+        },
+        "options-statement": "What is the most accurate description of this program's behavior?",
+        "options": [
+            "1 2 3 4 5",
+            "2 1 3 4 5",
+            "2 3 4 5 1",
+            "Undefined behaviour (no guaranteed output; may print anything, crash, or produce inconsistent results)"
+        ],
+        "correct": 3,
+        "explanation": "`std::rotate(first, middle, last)` requires that `first <= middle <= last`, i.e., middle must be within the range `[first, last]`. Here `first = begin()`, `middle = begin()+1`, but `last = begin()+0` which is before `middle`. This violates the precondition, resulting in undefined behaviour.",
+        "detailed": {
+            "concept": {
+                "title": "rotate Precondition: middle in [first, last]",
+                "description": "The C++ Standard specifies that `std::rotate` requires `[first, middle)` and `[middle, last)` to be valid ranges. Consequently, `middle` must lie between `first` and `last`, inclusive. If the arguments are not in this order, the behaviour is undefined.",
+                "points": [
+                    "`rotate(first, middle, last)` rotates left so that `*middle` becomes the new first element.",
+                    "The preconditions require `first <= middle` and `middle <= last`.",
+                    "Passing a `last` that is less than `middle` breaks the contract, leading to undefined behaviour.",
+                    "No diagnostic is required; implementations may not check the ordering."
+                ],
+                "prerequisites": [
+                    "Understanding of iterator ranges and the rotate algorithm.",
+                    "Knowledge that algorithm preconditions must be satisfied."
+                ],
+                "invariants-required-by-algorithm": [
+                    "`[first, middle)` is a valid range: `first` must be reachable from `middle` by incrementing.",
+                    "`[middle, last)` is a valid range.",
+                    "Equivalently: `first <= middle <= last` holds."
+                ],
+                "why-this-code-breaks-the-contract": [
+                    "`middle` is `begin()+1`, but `last` is `begin()+0`, so `middle > last`.",
+                    "Thus the range `[middle, last)` is invalid, and `rotate`'s precondition is violated."
+                ]
+            },
+            "line-by-line-explanation": [
+                {
+                    "line": 6,
+                    "code": "vector<int> v = {1, 2, 3, 4, 5};",
+                    "purpose": "Creates a vector with 5 elements."
+                },
+                {
+                    "line": 7,
+                    "code": "rotate(v.begin(), v.begin() + 1, v.begin() + 0);",
+                    "purpose": "Intends to rotate the first two elements so that the second becomes first, but the arguments are ordered incorrectly.",
+                    "risk": "`last` is before `middle`, causing undefined behaviour."
+                }
+            ],
+            "trace": [
+                {
+                    "step": 1,
+                    "op": "vector initialized",
+                    "state": "v = {1,2,3,4,5}",
+                    "out": ""
+                },
+                {
+                    "step": 2,
+                    "op": "rotate(v.begin(), v.begin()+1, v.begin()+0)",
+                    "state": "Precondition violated (middle > last)",
+                    "out": "Undefined behaviour"
+                }
+            ],
+            "analysis": {
+                "why-correct-option-is-d": "Because the precondition `first <= middle <= last` is not met, the program has undefined behaviour. No specific output is guaranteed; any observed result is incidental.",
+                "whyOptionsWrong": [
+                    {
+                        "option": "A",
+                        "reason": "Original sequence 1 2 3 4 5 could appear if the rotation did nothing, but due to UB this is not guaranteed."
+                    },
+                    {
+                        "option": "B",
+                        "reason": "2 1 3 4 5 could occur if the rotation were correctly applied to the first two elements, but the UB makes this unpredictable."
+                    },
+                    {
+                        "option": "C",
+                        "reason": "2 3 4 5 1 might be another accidental permutation, but not mandated by the standard and not guaranteed."
+                    }
+                ],
+                "exam-trap-signals": [
+                    "The programmer’s intent (rotate subrange) might distract from the fact that `rotate` expects `last >= middle`.",
+                    "The arguments `begin()+0` may look harmless; `+0` could be missed.",
+                    "No compiler error or warning would appear."
+                ]
+            },
+            "deep-diagnostics": {
+                "standard-contract-checklist": [
+                    "Is `first <= middle`? Yes (0 <= 1).",
+                    "Is `middle <= last`? No (1 > 0), so the condition fails.",
+                    "Is the behaviour defined if the condition fails? No, it is undefined."
+                ],
+                "undefined-behavior-consequences": [
+                    "The program may crash or silently produce an incorrect permutation.",
+                    "The result could vary between runs, compilers, or optimization levels.",
+                    "In a debug build, an assertion may catch the violated precondition, but not in release."
+                ],
+                "debugging-playbook": [
+                    "Check the order of arguments: `middle` must be between `first` and `last`.",
+                    "If the intent is to reverse a subrange, use `std::reverse` instead.",
+                    "Use assertions to validate iterator relationships before calling algorithms.",
+                    "If available, run with STL debug mode (e.g., `-D_GLIBCXX_DEBUG`) to detect precondition violations."
+                ]
+            },
+            "fix-and-verify": {
+                "corrected-comparator": {
+                    "prefix": "cpp",
+                    "body": []
+                },
+                "expected-behavior-after-fix": [
+                    "If the correct call is `rotate(v.begin(), v.begin()+1, v.begin()+2);`, it would rotate the first two elements to get `{2,1,3,4,5}`.",
+                    "If the whole vector should be rotated, `rotate(v.begin(), v.begin()+1, v.end());` gives `{2,3,4,5,1}`."
+                ],
+                "verification-tests": [
+                    {
+                        "name": "Fix: rotate first two elements",
+                        "input": "vector {1,2,3,4,5}; rotate(begin, begin+1, begin+2)",
+                        "expected": "2 1 3 4 5"
+                    },
+                    {
+                        "name": "Fix: rotate entire vector left by one",
+                        "input": "rotate(begin, begin+1, end)",
+                        "expected": "2 3 4 5 1"
+                    }
+                ],
+                "engineering-note": "When using `rotate`, always ensure `first <= middle <= last`. For subrange rotation, calculate the correct `last` as `first + length`."
+            },
+            "common-mistakes": [
+                "Confusing `rotate` with `reverse`: `rotate` moves elements circularly; `reverse` swaps order.",
+                "Miscalculating the range boundaries, especially with small lengths.",
+                "Assuming that passing `last` before `middle` will simply do nothing or swap elements, which is not guaranteed."
+            ],
+            "interview-and-exam-extension-questions": [
+                "What is the complexity of `std::rotate`?",
+                "How would you rotate a subrange of a vector without using `std::rotate`?",
+                "What is the difference between `std::rotate` and `std::rotate_copy`?",
+                "If `first > last`, what alternative algorithm could achieve a similar effect? (Answer: none, because the algorithm would have no meaningful input range)."
+            ],
+            "tips": [
+                "Always verify the order of arguments for standard algorithms.",
+                "Use `assert(distance(first,middle)>=0 && distance(middle,last)>=0)` as a sanity check."
+            ],
+            "warnings": [
+                "Precondition violations are a source of obscure bugs that may survive testing.",
+                "Relying on out-of-order arguments to be caught by the library is not portable."
+            ],
+            "solution-summary-for-engineers": "Root cause: `last` (begin()+0) is less than `middle` (begin()+1), violating the rotate precondition. Fix the call to `rotate(v.begin(), v.begin()+1, v.begin()+2)` or as appropriate."
+        }
+    },
+    {
+        "id": 5,
+        "type": "mcq",
+        "difficulty": "hard",
+        "points": 3,
+        "problem-statement": "The programmer attempts to sort an array of characters in a case‑insensitive manner using the custom comparator `icomp`. However, the comparator violates the strict weak ordering requirement mandated by `std::sort`, causing undefined behaviour.",
+        "code": {
+            "prefix": "cpp",
+            "body": [
+                "#include <iostream>",
+                "#include <algorithm>",
+                "#include <cctype>",
+                "using namespace std;",
+                "bool icomp(char a, char b) {",
+                "    return tolower(a) <= tolower(b); // intended case‑insensitive ordering",
+                "}",
+                "int main() {",
+                "    char arr[] = \"cba\";",
+                "    sort(arr, arr + 3, icomp);",
+                "    cout << arr << endl;",
+                "    return 0;",
+                "}"
+            ]
+        },
+        "options-statement": "What is the most accurate description of the program's behaviour?",
+        "options": [
+            "Prints \"abc\"",
+            "Prints \"cba\"",
+            "Compilation error: bad comparator type",
+            "Undefined behaviour (no guaranteed output; may print \"abc\", \"cba\", crash, or produce inconsistent results)"
+        ],
+        "correct": 3,
+        "explanation": "`std::sort` requires the comparator to define a strict weak ordering, which must be irreflexive (`comp(a,a)` is always `false`). The comparator `icomp` uses `<=`, so for characters that are the same after `tolower` (e.g., 'a' and 'A'), `icomp('a','a')` returns `true`. This violates irreflexivity, breaking the algorithm's contract and leading to undefined behaviour. The program may appear to work or fail unpredictably.",
+        "detailed": {
+            "concept": {
+                "title": "Strict Weak Ordering Requirement in std::sort",
+                "description": "The C++ Standard specifies that the comparison function object passed to `std::sort` must induce a strict weak ordering on the elements. In particular, it must be irreflexive: for any `a`, `comp(a,a)` must be `false`. A comparator that uses `<=` instead of `<` fails this requirement because `a <= a` is always true. Using such a comparator leads to undefined behaviour; implementations may reorder elements arbitrarily, crash, or produce invalid output.",
+                "points": [
+                    "`std::sort` requires a strict weak ordering comparator.",
+                    "Strict weak ordering demands irreflexivity: `comp(a,a) == false`.",
+                    "Using `<=` makes `comp(a,a)` true, violating the contract.",
+                    "The C++ standard does not require any diagnostic for this error; it is undefined behaviour."
+                ],
+                "prerequisites": [
+                    "Understanding of `std::sort` and its comparator requirements.",
+                    "Knowledge of strict weak ordering properties (irreflexivity, transitivity, etc.)."
+                ],
+                "invariants-required-by-algorithm": [
+                    "The comparator `comp` must define a strict weak ordering.",
+                    "For any `a`, `comp(a,a)` is false.",
+                    "If `comp(a,b)` and `comp(b,c)` then `comp(a,c)` (transitivity).",
+                    "The range `[first, last)` is mutable and will be sorted according to `comp`."
+                ],
+                "why-this-code-breaks-the-contract": [
+                    "`icomp` uses `tolower(a) <= tolower(b)`. For equal characters (e.g., 'a' and 'A'), `icomp('a','a')` returns `true`, which violates irreflexivity.",
+                    "Because the comparator is not a strict weak ordering, `std::sort` has undefined behaviour."
+                ]
+            },
+            "line-by-line-explanation": [
+                {
+                    "line": 5,
+                    "code": "bool icomp(char a, char b) {",
+                    "purpose": "Defines a custom comparator for two characters."
+                },
+                {
+                    "line": 6,
+                    "code": "return tolower(a) <= tolower(b);",
+                    "purpose": "Returns true if the lower‑case version of the first character is less than or equal to the second's.",
+                    "risk": "The `<=` breaks strict weak ordering; std::sort requires `<`."
+                },
+                {
+                    "line": 9,
+                    "code": "sort(arr, arr + 3, icomp);",
+                    "purpose": "Attempts to sort the character array using the broken comparator.",
+                    "risk": "Invokes undefined behaviour because `icomp` is not a valid strict weak ordering."
+                }
+            ],
+            "trace": [
+                {
+                    "step": 1,
+                    "op": "Array initialized",
+                    "state": "arr = \"cba\"",
+                    "out": ""
+                },
+                {
+                    "step": 2,
+                    "op": "sort called with invalid comparator",
+                    "state": "Precondition violated (comparator not strict weak ordering)",
+                    "out": "Undefined behaviour; no guaranteed result"
+                }
+            ],
+            "analysis": {
+                "why-correct-option-is-d": "The comparator violates the strict weak ordering requirement, so the behaviour is undefined. Any output (\"abc\", \"cba\", crash) is possible but not mandated; thus the only correct answer is that it's undefined.",
+                "whyOptionsWrong": [
+                    {
+                        "option": "A",
+                        "reason": "The program may print \"abc\" on some implementations, but it is not guaranteed because the comparator is broken."
+                    },
+                    {
+                        "option": "B",
+                        "reason": "It could also print \"cba\" or any other permutation; undefined behaviour means no specific output can be predicted."
+                    },
+                    {
+                        "option": "C",
+                        "reason": "The comparator’s signature and call are syntactically correct; a compilation error will not occur."
+                    }
+                ],
+                "exam-trap-signals": [
+                    "The seemingly plausible comparator with `<=` appears only slightly off from the correct `<`.",
+                    "Case‑insensitive sorting logic could distract from the fundamental ordering contract.",
+                    "The program might work correctly in many test cases, hiding the UB."
+                ]
+            },
+            "deep-diagnostics": {
+                "standard-contract-checklist": [
+                    "Is the comparator irreflexive? No, because `<=` returns true for equal arguments.",
+                    "Does the algorithm require irreflexivity? Yes.",
+                    "Is the behaviour defined if the comparator is not a strict weak ordering? No."
+                ],
+                "undefined-behavior-consequences": [
+                    "The array may be left in an invalid or unexpected order.",
+                    "A crash due to out‑of‑bounds access during sorting is possible.",
+                    "Different compilers or optimisation levels can produce different results.",
+                    "Silent data corruption may occur if the program later assumes the array is sorted."
+                ],
+                "debugging-playbook": [
+                    "Inspect the comparator logic: replace `<=` with `<`.",
+                    "Add `static_assert` or runtime test: `assert(!icomp('a','a'));`.",
+                    "Compile with debug flags (`-D_GLIBCXX_DEBUG`) to catch comparator violations.",
+                    "Test with equal elements to trigger irreflexivity failure."
+                ]
+            },
+            "fix-and-verify": {
+                "corrected-comparator": {
+                    "prefix": "cpp",
+                    "body": [
+                        "bool icomp(char a, char b) {",
+                        "    return tolower(a) < tolower(b);",
+                        "}"
+                    ]
+                },
+                "expected-behavior-after-fix": [
+                    "The predicate is now irreflexive and a strict weak ordering.",
+                    "`sort` will reliably produce the expected sorted order (case‑insensitive: \"abc\")."
+                ],
+                "verification-tests": [
+                    {
+                        "name": "Sort mixed case",
+                        "input": "\"cBa\"",
+                        "expected": "\"aBc\" or \"abc\" depending on stability (but guaranteed to be non‑decreasing according to comparator)"
+                    },
+                    {
+                        "name": "Test with duplicates",
+                        "input": "\"aAa\"",
+                        "expected": "sorted order with all 'a's together"
+                    }
+                ],
+                "engineering-note": "Always use `<` (strict less) for strict weak ordering comparators. The corrected version is safe and portable."
+            },
+            "common-mistakes": [
+                "Using `<=` in a comparator intended for sorting or binary search.",
+                "Assuming that a comparator that 'works' for a small test set is correct for all inputs.",
+                "Forgetting that `tolower` must be used consistently; here it's applied to both sides, so it's fine."
+            ],
+            "interview-and-exam-extension-questions": [
+                "Why is irreflexivity a necessity in std::sort? What could go wrong if it's violated?",
+                "Name two other standard algorithms that require a strict weak ordering comparator.",
+                "How would you implement a stable case‑insensitive sort?",
+                "What is the difference between `std::sort` and `std::stable_sort` with respect to comparator requirements?"
+            ],
+            "tips": [
+                "When writing a custom comparator, always test `comp(x,x)` – it must be false.",
+                "Prefer using `std::less<>` or `<` by default; derive custom comparators from that pattern.",
+                "Use `std::sort` with a lambda that explicitly uses `<` to avoid accidental `<=`."
+            ],
+            "warnings": [
+                "Undefined behaviour from a broken comparator may not produce visible errors in debug mode, making it particularly dangerous.",
+                "The C++ standard library does not validate comparator correctness at runtime (except in debug modes)."
+            ],
+            "solution-summary-for-engineers": "Root cause: comparator uses `<=` instead of `<`, violating strict weak ordering required by `std::sort`. Fix: change `<=` to `<`."
+        }
     }
 ]
