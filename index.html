@@ -9,12 +9,12 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="./index.css">
+    <script src="./index.json" defer></script>
     <script src="./index.js" defer></script>
-    <script src="./index.json"></script>
 </head>
 
 <body>
-    <div class="assignment-container">
+    <div class="page-shell">
         <header class="header">
             <div class="brand">
                 <div class="brand-icon">
@@ -25,16 +25,15 @@
                 </div>
                 <div class="brand-title">
                     <p class="title">Programming in Modern C++</p>
-                    <p class="subtitle">Folder contains all assignment files for <strong>NPTEL</strong> course
-                        preparation.</p>
+                    <p class="subtitle">All assignment files for <strong>NPTEL</strong> course preparation.</p>
                 </div>
             </div>
             <button id="refreshButton" class="button" type="button">Refresh data</button>
         </header>
 
         <div class="assessment-top-info">
-            Dashboard automatically scans and displays all <code>.html</code> assignment files found in the
-            <code>sol</code> and <code>src</code> directories as folder cards containing all 12 weeks.
+            Dashboard scans and displays all <code>.html</code> assignment files found in the
+            <code>sol</code> and <code>src</code> directories as a nested folder tree.
         </div>
 
         <section class="summary-grid" id="overviewGrid"></section>
@@ -42,7 +41,7 @@
         <section class="filter-panel">
             <div class="field">
                 <label for="search">Search assignments</label>
-                <input id="search" type="text" placeholder="Search by filename, week, or source">
+                <input id="search" type="text" placeholder="Search by filename, week, or source…">
             </div>
             <div class="field">
                 <label for="typeFilter">Source</label>
@@ -60,7 +59,7 @@
             </div>
         </section>
 
-        <div class="weeks-grid" id="weeksContainer"></div>
+        <div id="treeContainer"></div>
     </div>
 </body>
 

@@ -1,25 +1,29 @@
 const staticHtmlFiles = Array.isArray(window.htmlFiles) ? window.htmlFiles : [];
+
+/* DOM refs */
 const searchInput = document.getElementById('search');
 const typeFilter = document.getElementById('typeFilter');
 const weekFilter = document.getElementById('weekFilter');
 const overviewGrid = document.getElementById('overviewGrid');
-const weeksContainer = document.getElementById('weeksContainer');
+const treeContainer = document.getElementById('treeContainer');
 const refreshButton = document.getElementById('refreshButton');
 
-const weekLabels = Array.from({ length: 12 }, (_, index) => `Week ${String(index + 1).padStart(2, '0')}`);
-const cacheKey = 'assignment-dashboard-html-files-v1';
+/* Constants */
+const CACHE_KEY = 'assignment-dashboard-html-files-v2';
 
-let currentFiles = [];
-let parsedFiles = [];
-let weeksData = [];
+/* State */
+let currentFiles = [];   // raw normalised file objects  { path }
+let parsedFiles = [];   // enriched file objects
 let refreshInProgress = false;
 
-const normalize = value => value?.toString().toLowerCase() || '';
+/* ─── Normalisation ─────────────────────────────────────────────── */
+
+const normalize = v => v?.toString().toLowerCase() || '';
 
 const normalizePathEntry = entry => {
-    const rawPath = typeof entry === 'string' ? entry : entry?.path;
-    if (!rawPath) return null;
-    return { path: String(rawPath).replace(/\\/g, '/') };
+    const raw = typeof entry === 'string' ? entry : entry?.path;
+    if (!raw) return null;
+    return { path: String(raw).replace(/\\/g, '/') };
 };
 
 const normalizeFileList = list => {
@@ -33,12 +37,38 @@ const normalizeFileList = list => {
             seen.add(key);
             return true;
         })
-        .sort((a, b) => a.path.localeCompare(b.path, undefined, { numeric: true, sensitivity: 'base' }));
+        .sort((a, b) =>
+            a.path.localeCompare(b.path, undefined, { numeric: true, sensitivity: 'base' })
+        );
 };
+
+/* ─── Parse a single file path ──────────────────────────────────── */
+
+const parseFile = file => {
+    const path = file.path;
+    const parts = path.split('/');
+    const fileName = parts[parts.length - 1] || '';
+    const source = (parts[0] || '').toLowerCase();
+    const weekMatch = path.match(/WEEK\s*0*([0-9]+)/i);
+    const week = weekMatch
+        ? `WEEK ${String(Number(weekMatch[1])).padStart(2, '0')}`
+        : null;
+    const title = fileName.replace(/\.html?$/i, '');
+    return { path, parts, fileName, title, source, week };
+};
+
+/* ─── Data rebuild ──────────────────────────────────────────────── */
+
+const rebuildData = files => {
+    currentFiles = normalizeFileList(files);
+    parsedFiles = currentFiles.map(parseFile);
+};
+
+/* ─── Cache ─────────────────────────────────────────────────────── */
 
 const loadCachedFiles = () => {
     try {
-        const raw = localStorage.getItem(cacheKey);
+        const raw = localStorage.getItem(CACHE_KEY);
         if (!raw) return [];
         const parsed = JSON.parse(raw);
         return normalizeFileList(parsed?.files || []);
@@ -49,66 +79,58 @@ const loadCachedFiles = () => {
 
 const saveCachedFiles = files => {
     try {
-        localStorage.setItem(cacheKey, JSON.stringify({ savedAt: Date.now(), files }));
+        localStorage.setItem(CACHE_KEY, JSON.stringify({ savedAt: Date.now(), files }));
     } catch {
-        // ignore storage errors
+        /* ignore quota errors */
     }
 };
 
-const rebuildData = files => {
-    currentFiles = normalizeFileList(files);
-    parsedFiles = currentFiles.map(file => {
-        const path = file.path;
-        const fileName = path.split('/').pop() || '';
-        const source = path.startsWith('src/') ? 'src' : 'sol';
-        const folder = (path.split('/')[1] || 'root').toLowerCase();
-        const match = path.match(/WEEK\s*0*([0-9]+)/i);
-        const week = match ? `Week ${String(Number(match[1])).padStart(2, '0')}` : 'Unknown';
-        const title = fileName.replace(/\.html?$/i, '');
-        return { path, fileName, title, source, folder, week };
-    });
-
-    weeksData = weekLabels.map(label => ({ label, items: [] }));
-    parsedFiles.forEach(file => {
-        const week = weeksData.find(item => item.label === file.week);
-        if (week) week.items.push(file);
-    });
-};
+/* ─── Week dropdown ─────────────────────────────────────────────── */
 
 const populateWeekOptions = () => {
-    weekLabels.forEach(label => {
-        const option = document.createElement('option');
-        option.value = label;
-        option.textContent = label;
-        weekFilter.appendChild(option);
+    while (weekFilter.options.length > 1) weekFilter.remove(1);
+
+    const weeks = new Set(parsedFiles.map(f => f.week).filter(Boolean));
+    const sorted = [...weeks].sort((a, b) =>
+        a.localeCompare(b, undefined, { numeric: true })
+    );
+    sorted.forEach(label => {
+        const opt = document.createElement('option');
+        opt.value = label;
+        opt.textContent = label;
+        weekFilter.appendChild(opt);
     });
 };
+
+/* ─── Summary cards ─────────────────────────────────────────────── */
 
 const renderSummary = () => {
     const total = parsedFiles.length;
-    const srcCount = parsedFiles.filter(file => file.source === 'src').length;
-    const solCount = parsedFiles.filter(file => file.source === 'sol').length;
-    const activeWeeks = weeksData.filter(week => week.items.length > 0).length;
+    const srcCount = parsedFiles.filter(f => f.source === 'src').length;
+    const solCount = parsedFiles.filter(f => f.source === 'sol').length;
+    const activeWeeks = new Set(parsedFiles.map(f => f.week).filter(Boolean)).size;
 
     overviewGrid.innerHTML = `
-                <div class="summary-card">
-                    <span>Total assignments</span>
-                    <strong>${total}</strong>
-                </div>
-                <div class="summary-card">
-                    <span>Active weeks</span>
-                    <strong>${activeWeeks} / 12</strong>
-                </div>
-                <div class="summary-card">
-                    <span>src files</span>
-                    <strong>${srcCount}</strong>
-                </div>
-                <div class="summary-card">
-                    <span>sol files</span>
-                    <strong>${solCount}</strong>
-                </div>
-            `;
+        <div class="summary-card">
+            <span>Total assignments</span>
+            <strong>${total}</strong>
+        </div>
+        <div class="summary-card">
+            <span>Active weeks</span>
+            <strong>${activeWeeks}&thinsp;/&thinsp;12</strong>
+        </div>
+        <div class="summary-card">
+            <span>src files</span>
+            <strong>${srcCount}</strong>
+        </div>
+        <div class="summary-card">
+            <span>sol files</span>
+            <strong>${solCount}</strong>
+        </div>
+    `;
 };
+
+/* ─── Filtering ─────────────────────────────────────────────────── */
 
 const getFilteredFiles = () => {
     const search = normalize(searchInput.value.trim());
@@ -119,158 +141,217 @@ const getFilteredFiles = () => {
         if (source !== 'all' && file.source !== source) return false;
         if (week !== 'all' && file.week !== week) return false;
         if (!search) return true;
-        return [file.title, file.fileName, file.week, file.source, file.folder, file.path].some(value =>
-            normalize(value).includes(search)
-        );
+        return [file.title, file.fileName, file.week, file.source, file.path]
+            .some(v => normalize(v).includes(search));
     });
 };
 
-const getCardLabel = (source, folder) => {
-    if (source === 'sol') return folder;
-    return `src / ${folder}`;
-};
+/* ─── Tree data structure ───────────────────────────────────────── */
 
-const renderWeeks = () => {
-    const filteredFiles = getFilteredFiles();
-    weeksContainer.innerHTML = '';
-
-    const groupedBySourceFolder = filteredFiles.reduce((acc, file) => {
-        const key = `${file.source}:${file.folder}`;
-        if (!acc[key]) {
-            acc[key] = { source: file.source, folder: file.folder, items: [] };
-        }
-        acc[key].items.push(file);
-        return acc;
-    }, {});
-
-    const cards = Object.values(groupedBySourceFolder);
-    cards.sort((a, b) => {
-        const solOrder = ['practice', 'sessions', 'solution'];
-        if (a.source === 'sol' && b.source === 'sol') {
-            const ai = solOrder.indexOf(a.folder);
-            const bi = solOrder.indexOf(b.folder);
-            const aRank = ai === -1 ? 99 : ai;
-            const bRank = bi === -1 ? 99 : bi;
-            if (aRank !== bRank) return aRank - bRank;
-            return a.folder.localeCompare(b.folder);
-        }
-        if (a.source !== b.source) {
-            return a.source === 'sol' ? -1 : 1;
-        }
-        return a.folder.localeCompare(b.folder);
-    });
-
-    let itemsFound = 0;
-
-    cards.forEach(card => {
-        const cardNode = document.createElement('div');
-        cardNode.className = `week-card folder-card folder-${card.folder.replace(/[^a-z0-9_-]/gi, '').toLowerCase()}`;
-        cardNode.innerHTML = `
-                    <div class="week-header">
-                        <h2>${getCardLabel(card.source, card.folder)}</h2>
-                        <p class="week-count">${card.items.length} file${card.items.length === 1 ? '' : 's'}</p>
-                    </div>
-                `;
-
-        weekLabels.forEach(weekLabel => {
-            const weekItems = card.items
-                .filter(item => item.week === weekLabel)
-                .sort((a, b) => a.title.localeCompare(b.title));
-
-            const weekSection = document.createElement('div');
-            weekSection.className = 'week-group';
-            weekSection.innerHTML = `
-                        <div class="week-group-header">
-                            <h3>${weekLabel}</h3>
-                            <span>${weekItems.length} file${weekItems.length === 1 ? '' : 's'}</span>
-                        </div>
-                    `;
-
-            if (weekItems.length === 0) {
-                const empty = document.createElement('div');
-                empty.className = 'empty-state week-empty';
-                empty.textContent = 'No files';
-                weekSection.appendChild(empty);
+const buildTree = files => {
+    const root = {};
+    files.forEach(file => {
+        let node = root;
+        file.parts.forEach((part, i) => {
+            if (i === file.parts.length - 1) {
+                if (!node.__files) node.__files = [];
+                node.__files.push(file);
             } else {
-                weekItems.forEach(item => {
-                    itemsFound += 1;
-                    const row = document.createElement('div');
-                    row.className = 'task-row';
-                    row.innerHTML = `
-                                <span class="file-icon">
-                                    ${item.source === 'src'
-                            ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2h9l5 5v15H6V2Zm9 0v5h5"/></svg>'
-                            : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h5l2 3h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z"/></svg>'}
-                                </span>
-                                <div>
-                                    <p class="task-title">${item.title}</p>
-                                    <p class="task-details">${item.path}</p>
-                                </div>
-                                <span class="task-badge">${item.source}</span>
-                                <a class="task-action" href="${encodeURI(item.path)}" target="_blank" rel="noopener noreferrer">
-                                    Open
-                                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6l6 6-6 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                                </a>
-                            `;
-                    weekSection.appendChild(row);
-                });
+                if (!node[part]) node[part] = {};
+                node = node[part];
             }
-
-            cardNode.appendChild(weekSection);
         });
+    });
+    return root;
+};
 
-        weeksContainer.appendChild(cardNode);
+const countLeaves = node => {
+    if (!node || typeof node !== 'object') return 0;
+    let count = node.__files ? node.__files.length : 0;
+    Object.keys(node).forEach(k => {
+        if (k !== '__files') count += countLeaves(node[k]);
+    });
+    return count;
+};
+
+/* ─── SVG snippets ──────────────────────────────────────────────── */
+
+const CHEVRON_SVG = `<svg
+    class="chevron"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2.5"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true">
+    <path d="M9 18l6-6-6-6"/>
+</svg>`;
+
+const FILE_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">
+    <path d="M6 2h9l5 5v15H6V2Zm9 0v5h5"/>
+</svg>`;
+
+const ARROW_SVG = `<svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2.5"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true">
+    <path d="M9 18l6-6-6-6"/>
+</svg>`;
+
+/* ─── Collapse / expand toggle ──────────────────────────────────── */
+
+const makeCollapsible = (header, body) => {
+    let open = false; // Changed to false for collapsed-by-default
+
+    const chevron = header.querySelector('.chevron');
+
+    const update = () => {
+        chevron.classList.toggle('open', open);
+        header.classList.toggle('is-open', open);
+        header.classList.toggle('closed', !open);
+        body.classList.toggle('hidden', !open);
+    };
+
+    update();
+    header.addEventListener('click', () => { open = !open; update(); });
+};
+
+/* ─── Depth → CSS level class ───────────────────────────────────── */
+
+const DEPTH_CLASSES = ['level-root', 'level-folder', 'level-week', 'level-inner'];
+
+const depthClass = depth =>
+    DEPTH_CLASSES[Math.min(depth, DEPTH_CLASSES.length - 1)];
+
+/* ─── Recursive tree renderer ───────────────────────────────────── */
+
+const renderTree = (nodeObj, depth, container) => {
+    if (nodeObj.__files && nodeObj.__files.length > 0) {
+        const fileList = buildFileList(nodeObj.__files);
+        container.appendChild(fileList);
+    }
+
+    const childKeys = Object.keys(nodeObj)
+        .filter(k => k !== '__files')
+        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+
+    childKeys.forEach(key => {
+        const child = nodeObj[key];
+        const count = countLeaves(child);
+
+        const node = document.createElement('div');
+        node.className = `tree-node ${depthClass(depth)}`;
+
+        const header = document.createElement('div');
+        header.className = 'tree-node-header closed';
+        header.innerHTML = `
+            ${CHEVRON_SVG}
+            <span class="node-label">${key}</span>
+            <span class="node-count">${count} file${count !== 1 ? 's' : ''}</span>
+        `;
+
+        const body = document.createElement('div');
+        body.className = 'tree-node-body hidden';
+
+        node.appendChild(header);
+        node.appendChild(body);
+        container.appendChild(node);
+
+        makeCollapsible(header, body);
+        renderTree(child, depth + 1, body);
+    });
+};
+
+/* ─── Build a file-list element ─────────────────────────────────── */
+
+const buildFileList = files => {
+    const list = document.createElement('div');
+    list.className = 'file-list';
+
+    files.forEach(file => {
+        const row = document.createElement('div');
+        row.className = 'file-row';
+        row.innerHTML = `
+            <span class="file-icon">${FILE_SVG}</span>
+            <div class="file-info">
+                <p class="file-name">${file.title}</p>
+                <p class="file-path">${file.path}</p>
+            </div>
+            <span class="file-badge">${file.source}</span>
+            <a
+                class="file-open"
+                href="${encodeURI(file.path)}"
+                target="_blank"
+                rel="noopener noreferrer"
+            >Open ${ARROW_SVG}</a>
+        `;
+        list.appendChild(row);
     });
 
-    if (itemsFound === 0) {
-        weeksContainer.innerHTML = '<div class="empty-state">No matching assignment files were found. Try a different search or filter.</div>';
-    }
+    return list;
 };
+
+/* ─── Main render entry-point ───────────────────────────────────── */
+
+const renderFullTree = () => {
+    const filtered = getFilteredFiles();
+    treeContainer.innerHTML = '';
+
+    if (filtered.length === 0) {
+        treeContainer.innerHTML =
+            '<div class="empty-state">No matching assignment files found. Try a different search or filter.</div>';
+        return;
+    }
+
+    const tree = buildTree(filtered);
+    renderTree(tree, 0, treeContainer);
+};
+
+/* ─── GitHub API refresh ─────────────────────────────────────────── */
 
 const inferGitHubRepo = () => {
     const host = (window.location.hostname || '').toLowerCase();
     if (!host.endsWith('.github.io')) return null;
     const owner = host.slice(0, -'.github.io'.length);
-    const pathSegments = window.location.pathname.split('/').filter(Boolean);
-    const repo = pathSegments.length > 0 ? pathSegments[0] : `${owner}.github.io`;
+    const segments = window.location.pathname.split('/').filter(Boolean);
+    const repo = segments.length > 0 ? segments[0] : `${owner}.github.io`;
     if (!owner || !repo) return null;
     return { owner, repo };
 };
 
 const fetchJson = async url => {
-    const response = await fetch(url, {
-        headers: {
-            Accept: 'application/vnd.github+json'
-        }
-    });
-    if (!response.ok) {
-        throw new Error(`Request failed (${response.status})`);
-    }
-    return response.json();
+    const res = await fetch(url, { headers: { Accept: 'application/vnd.github+json' } });
+    if (!res.ok) throw new Error(`GitHub API error (${res.status})`);
+    return res.json();
 };
 
 const fetchGitHubFiles = async () => {
-    const repoInfo = inferGitHubRepo();
-    if (!repoInfo) return [];
+    const info = inferGitHubRepo();
+    if (!info) return [];
 
-    const repoMetaUrl = `https://api.github.com/repos/${repoInfo.owner}/${repoInfo.repo}`;
-    const repoMeta = await fetchJson(repoMetaUrl);
-    const branch = repoMeta?.default_branch || 'main';
+    const meta = await fetchJson(`https://api.github.com/repos/${info.owner}/${info.repo}`);
+    const branch = meta?.default_branch || 'main';
 
-    const treeUrl = `https://api.github.com/repos/${repoInfo.owner}/${repoInfo.repo}/git/trees/${encodeURIComponent(branch)}?recursive=1`;
-    const treeData = await fetchJson(treeUrl);
+    const treeData = await fetchJson(
+        `https://api.github.com/repos/${info.owner}/${info.repo}/git/trees/${encodeURIComponent(branch)}?recursive=1`
+    );
+
     const nodes = Array.isArray(treeData?.tree) ? treeData.tree : [];
 
-    const files = nodes
-        .filter(node => node && node.type === 'blob' && typeof node.path === 'string')
-        .filter(node => /^(sol|src)\//i.test(node.path))
-        .filter(node => /\.html?$/i.test(node.path))
-        .map(node => ({ path: node.path }));
-
-    return normalizeFileList(files);
+    return normalizeFileList(
+        nodes
+            .filter(n => n?.type === 'blob' && typeof n.path === 'string')
+            .filter(n => /^(sol|src)\//i.test(n.path) && /\.html?$/i.test(n.path))
+            .map(n => ({ path: n.path }))
+    );
 };
 
-const setRefreshButtonState = (busy, label) => {
+const setRefreshState = (busy, label) => {
     refreshButton.disabled = busy;
     refreshButton.textContent = label;
 };
@@ -278,44 +359,47 @@ const setRefreshButtonState = (busy, label) => {
 const refreshFromGitHub = async (manual = false) => {
     if (refreshInProgress) return;
     refreshInProgress = true;
-
-    if (manual) {
-        setRefreshButtonState(true, 'Refreshing...');
-    }
+    if (manual) setRefreshState(true, 'Refreshing…');
 
     try {
-        const remoteFiles = await fetchGitHubFiles();
-        if (remoteFiles.length > 0) {
-            const currentPaths = currentFiles.map(item => item.path);
-            const remotePaths = remoteFiles.map(item => item.path);
-            const changed = currentPaths.length !== remotePaths.length ||
-                remotePaths.some((path, index) => path !== currentPaths[index]);
+        const remote = await fetchGitHubFiles();
+        if (remote.length > 0) {
+            const curPaths = currentFiles.map(f => f.path);
+            const remPaths = remote.map(f => f.path);
+            const changed =
+                curPaths.length !== remPaths.length ||
+                remPaths.some((p, i) => p !== curPaths[i]);
 
             if (changed) {
-                rebuildData(remoteFiles);
+                rebuildData(remote);
+                populateWeekOptions();
                 renderSummary();
-                renderWeeks();
-                saveCachedFiles(remoteFiles);
+                renderFullTree();
+                saveCachedFiles(remote);
             }
         }
-    } catch (error) {
-        console.warn('Unable to refresh assignment list from GitHub API.', error);
+    } catch (err) {
+        console.warn('GitHub refresh failed:', err);
     } finally {
-        setRefreshButtonState(false, 'Refresh data');
+        setRefreshState(false, 'Refresh data');
         refreshInProgress = false;
     }
 };
 
-searchInput.addEventListener('input', renderWeeks);
-typeFilter.addEventListener('change', renderWeeks);
-weekFilter.addEventListener('change', renderWeeks);
-refreshButton.addEventListener('click', () => {
-    refreshFromGitHub(true);
-});
+/* ─── Event listeners ───────────────────────────────────────────── */
 
-populateWeekOptions();
-const cachedFiles = loadCachedFiles();
-rebuildData(cachedFiles.length > 0 ? cachedFiles : staticHtmlFiles);
-renderSummary();
-renderWeeks();
-refreshFromGitHub(false);
+searchInput.addEventListener('input', renderFullTree);
+typeFilter.addEventListener('change', renderFullTree);
+weekFilter.addEventListener('change', renderFullTree);
+refreshButton.addEventListener('click', () => refreshFromGitHub(true));
+
+/* ─── Bootstrap ─────────────────────────────────────────────────── */
+
+(() => {
+    const cached = loadCachedFiles();
+    rebuildData(cached.length > 0 ? cached : staticHtmlFiles);
+    populateWeekOptions();
+    renderSummary();
+    renderFullTree();
+    refreshFromGitHub(false);
+})();
