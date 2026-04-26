@@ -16,7 +16,7 @@ body {
     font-size: 12px;
     line-height: 1.5;
     color: #1c1c28;
-    padding: 30px 20px;
+    padding: 12px 12px;
 }
 
 /* Slightly enlarge rendered math while keeping line height stable. */
@@ -1324,7 +1324,7 @@ pre {
     background: #ffffff;
     border-radius: 12px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    padding: 16px;
+    padding: 12px;
     border: 1px solid #e9ecef;
     display: flex;
     align-items: center;
@@ -1346,18 +1346,18 @@ pre {
     background: #ffffff;
     border: 1px solid #a0332d;
     color: #a0332d;
-    padding: 2px 8px;
-    border-radius: 64px;
+    padding: 4px 12px;
+    border-radius: 8px;
     font-size: 12px;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.1s ease-in-out;
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: 2px;
     white-space: nowrap;
-    min-height: 25px;
-    min-width: 75px;
+    min-height: 20px;
+    min-width: 80px;
     justify-content: center;
     flex-shrink: 0;
 }
