@@ -32,7 +32,7 @@ body {
     line-height: 1.5;
     color: var(--text);
     background: var(--bg);
-    padding: 30px 20px;
+    padding: 12px 12px;
 }
 
 body, input, select, button { font: inherit; }
@@ -41,12 +41,12 @@ a { color: inherit; text-decoration: none; }
 
 /* ─── Page shell ────────────────────────────────────────────────── */
 .page-shell {
-    max-width: 1000px;
-    margin: 0 auto;
+    max-width: 100%;
+    margin: 2px;
     background: var(--surface);
-    border-radius: 14px;
+    border-radius: 8px;
     box-shadow: var(--shadow);
-    padding: 16px 20px 24px;
+    padding: 12px 12px 12px;
 }
 
 /* ─── Header ────────────────────────────────────────────────────── */
@@ -264,8 +264,8 @@ a { color: inherit; text-decoration: none; }
 
 /* Node label */
 .node-label {
-    font-size: 13px;
-    font-weight: 700;
+    font-size: 12px;
+    font-weight: 800;
     color: var(--text);
     flex: 1;
     min-width: 0;
@@ -304,7 +304,7 @@ a { color: inherit; text-decoration: none; }
 .level-root > .tree-node-header:hover { background: var(--accent-mid); }
 
 .level-root > .tree-node-header .node-label {
-    font-size: 15px;
+    font-size: 12px;
     font-weight: 800;
     color: var(--accent);
 }
@@ -320,8 +320,8 @@ a { color: inherit; text-decoration: none; }
 }
 
 .level-folder > .tree-node-header .node-label {
-    font-size: 13px;
-    font-weight: 700;
+    font-size: 12px;
+    font-weight: 800;
     text-transform: capitalize;
 }
 
@@ -339,24 +339,38 @@ a { color: inherit; text-decoration: none; }
 }
 
 .level-week > .tree-node-body {
-    padding: 0;
-    gap: 0;
+    padding: 12px 8px;
+    gap: 8px;
+}
+
+.level-inner {
+    border-radius: 6px !important;
+    margin-bottom: 4px;
 }
 
 .level-inner > .tree-node-header {
-    padding: 7px 12px;
-    background: var(--surface);
+    padding: 9px 12px;
+    background: var(--surface-soft);
+    border-radius: 6px 6px 0 0;
+    font-size: 12px;
+}
+
+.level-inner > .tree-node-header:hover {
+    background: #f0f2f8;
 }
 
 .level-inner > .tree-node-header .node-label {
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
-    color: var(--muted);
+    color: var(--text);
+    text-transform: none;
+    letter-spacing: normal;
 }
 
 .level-inner > .tree-node-body {
     padding: 0;
     gap: 0;
+    border-radius: 0 0 6px 6px;
 }
 
 /* ─── File list & rows ──────────────────────────────────────────── */
@@ -497,7 +511,7 @@ pre {
 .hljs { background: #f0f2f5 !important; }
 
 /* ─── Responsive ────────────────────────────────────────────────── */
-@media (max-width: 700px) {
+@media (max-width: 800px) {
     .page-shell { padding: 12px; }
     .filter-panel { grid-template-columns: 1fr; }
     .file-row {

@@ -206,7 +206,10 @@ const ARROW_SVG = `<svg
 /* ─── Collapse / expand toggle ──────────────────────────────────── */
 
 const makeCollapsible = (header, body) => {
-    let open = false; // Changed to false for collapsed-by-default
+    // Check if this is a WEEK node - expand WEEK nodes by default
+    const label = header.querySelector('.node-label');
+    const isWeekNode = label && /^WEEK\s*\d+/i.test(label.textContent.trim());
+    let open = isWeekNode; // WEEK nodes open by default, others closed
 
     const chevron = header.querySelector('.chevron');
 
